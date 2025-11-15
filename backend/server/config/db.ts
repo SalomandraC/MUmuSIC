@@ -1,14 +1,10 @@
-import postgres from 'postgres'
+import postgres from 'postgres';
+import { appConfig } from './appConfig';
 
-const connectionString = process.env.DATABASE_URL
-
-if (!connectionString) {
-  throw new Error('DATABASE_URL is not set in environment variables')
-}
-
-const sql = postgres(connectionString, {
-  ssl: { rejectUnauthorized: false }  
+const sql = postgres(appConfig.databaseUrl, {
+  ssl: appConfig.isProduction ? { rejectUnauthorized: false } : undefined,
+  max: 10,
+  connect_timeout: 30,
 });
 
-
-export default sql
+export default sql;

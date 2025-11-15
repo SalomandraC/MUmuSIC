@@ -9,6 +9,7 @@
     "dev": "ts-node server/index.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.81.1",
     "@types/bcrypt": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/swagger-jsdoc": "^6.0.4",
@@ -23,7 +24,8 @@
     "pg": "^8.11.3",
     "postgres": "^3.4.5",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/cors": "^2.8.18",

@@ -1,7 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.notFoundHandler = exports.errorHandler = void 0;
+const zod_1 = require("zod");
 const errorHandler = (err, req, res, next) => {
+    if (err instanceof zod_1.ZodError) {
+        res.status(400).json({
+            error: 'Ошибка валидации',
+            issues: err.issues,
+        });
+        return;
+    }
     const statusCode = err.statusCode || 500;
     const message = err.message || 'Внутренняя ошибка сервера';
     console.error('Error:', {
@@ -15,6 +23,7 @@ const errorHandler = (err, req, res, next) => {
         error: message,
         ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
     });
+    return;
 };
 exports.errorHandler = errorHandler;
 const notFoundHandler = (req, res) => {

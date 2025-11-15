@@ -1,15 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
+import { ZodError } from 'zod';
 
 export interface AppError extends Error {
   statusCode?: number;
+  issues?: unknown;
 }
 
 export const errorHandler = (
-  err: AppError,
+  err: AppError | ZodError,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
+  if (err instanceof ZodError) {
+    res.status(400).json({
+      error: 'Ошибка валидации',
+      issues: err.issues,
+    });
+    return;
+  }
+
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Внутренняя ошибка сервера';
 
@@ -25,6 +35,7 @@ export const errorHandler = (
     error: message,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
+  return;
 };
 
 export const notFoundHandler = (req: Request, res: Response) => {

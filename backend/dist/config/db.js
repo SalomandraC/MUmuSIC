@@ -4,11 +4,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const postgres_1 = __importDefault(require("postgres"));
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-    throw new Error('DATABASE_URL is not set in environment variables');
-}
-const sql = (0, postgres_1.default)(connectionString, {
-    ssl: { rejectUnauthorized: false }
+const appConfig_1 = require("./appConfig");
+const sql = (0, postgres_1.default)(appConfig_1.appConfig.databaseUrl, {
+    ssl: appConfig_1.appConfig.isProduction ? { rejectUnauthorized: false } : undefined,
+    max: 10,
+    connect_timeout: 30,
 });
 exports.default = sql;
