@@ -27,6 +27,40 @@ const swaggerDefinition: SwaggerDefinition = {
       },
     },
     schemas: {
+      GuestTrack: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          title: { type: 'string' },
+          artist: { type: 'string' },
+          file_path: { type: 'string', example: '/storage/404Heart.mp3' },
+          file_format: { type: 'string', example: 'mp3' },
+          duration: { type: 'integer' },
+          file_size: { type: 'integer' },
+          is_active: { type: 'boolean' },
+          play_count: { type: 'integer' },
+          created_at: { type: 'string', format: 'date-time' },
+          url: { type: 'string', example: 'http://localhost:5050/storage/404Heart.mp3' },
+          streamUrl: { type: 'string', example: 'http://localhost:5050/guest-tracks/1/stream' },
+        },
+      },
+      Track: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          user_id: { type: 'integer' },
+          title: { type: 'string' },
+          artist: { type: 'string' },
+          album: { type: 'string' },
+          duration: { type: 'integer', description: 'seconds' },
+          file_path: { type: 'string' },
+          file_format: { type: 'string', example: 'mp3' },
+          file_size: { type: 'integer' },
+          notes: { type: 'string' },
+          is_public: { type: 'boolean' },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
       User: {
         type: 'object',
         properties: {
@@ -78,21 +112,6 @@ const swaggerDefinition: SwaggerDefinition = {
           newPassword: { type: 'string', format: 'password' },
         },
       },
-      ResetPasswordRequest: {
-        type: 'object',
-        required: ['email'],
-        properties: {
-          email: { type: 'string', format: 'email' },
-        },
-      },
-      ResetPasswordConfirmRequest: {
-        type: 'object',
-        required: ['token', 'newPassword'],
-        properties: {
-          token: { type: 'string' },
-          newPassword: { type: 'string', format: 'password' },
-        },
-      },
       GuestSession: {
         type: 'object',
         properties: {
@@ -129,8 +148,7 @@ const swaggerDefinition: SwaggerDefinition = {
 const options = {
   definition: swaggerDefinition,
   apis: [
-    './server/**/*.ts', 
-    './dist/**/*.js'    
+    './server/**/*.ts'
   ],
 };
 

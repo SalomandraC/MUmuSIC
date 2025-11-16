@@ -8,6 +8,7 @@ import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 import authRoutes from './routes/auth.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import filesRoutes from './routes/files.routes';
 
 const app: Application = express();
 
@@ -34,9 +35,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: NODE_ENV === 'production', // В production должен быть true для HTTPS
+    secure: NODE_ENV === 'production', 
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 * 10 // 10 дней
+    maxAge: 24 * 60 * 60 * 1000 * 10 
   }
 }));
 
@@ -72,6 +73,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 
 // Роуты
 app.use('/', authRoutes);
+app.use('/', filesRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

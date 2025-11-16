@@ -8,6 +8,9 @@ import { swaggerSpec } from './swagger';
 import { appConfig } from './config/appConfig';
 import authRoutes from './modules/auth/auth.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import debugRoutes from './modules/debug/debug.routes';
+import guestRoutes from './modules/guest/guest.routes';
+import filesRoutes from './modules/files/files.routes';
 
 const app: Application = express();
 
@@ -57,6 +60,13 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 
 // Роуты
 app.use('/auth', authRoutes);
+app.use('/debug', debugRoutes);
+// Раздача статических файлов из папки storage (для путей вида /storage/*.mp3)
+app.use('/storage', express.static(appConfig.storageRoot));
+// Гостевые треки
+app.use('/guest-tracks', guestRoutes);
+// Files API (upload/list/delete under /files) and direct serving under /:accountId/:fileName
+app.use('/', filesRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -73,4 +83,6 @@ app.use(errorHandler);
 app.listen(Number(appConfig.port), '0.0.0.0', () => {
   console.log(`Server running on http://localhost:${appConfig.port}`);
   console.log(`Swagger docs available at http://localhost:${appConfig.port}/api-docs`);
+  console.log(`Storage root: ${appConfig.storageRoot}`);
+  console.log(`Storage exists: ${require('fs').existsSync(appConfig.storageRoot)}`);
 });

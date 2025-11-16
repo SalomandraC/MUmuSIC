@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import path from 'path';
 import { z } from 'zod';
 
 dotenv.config();
@@ -7,7 +8,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(5050),
   SESSION_SECRET: z.string().min(8).default('dev-session-secret'),
-  DATABASE_URL: z.string().url({ message: 'DATABASE_URL must be a valid URL' }),
+  DATABASE_URL: z.string().url({ message: 'DATABASE_URL must be a valid URL' }).optional(),
   SUPABASE_URL: z.string().url({ message: 'SUPABASE_URL must be a valid URL' }).optional(),
   SUPABASE_ANON_KEY: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
@@ -18,6 +19,7 @@ const envSchema = z.object({
   REFRESH_TOKEN_TTL: z.union([z.string(), z.number()]).default('7d'),
   PASSWORD_RESET_TOKEN_TTL: z.union([z.string(), z.number()]).default('1h'),
   GUEST_SESSION_TTL_MINUTES: z.coerce.number().default(60 * 24),
+  STORAGE_ROOT: z.string().optional(),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -53,6 +55,9 @@ export const appConfig = {
   guestSessions: {
     ttlMinutes: env.GUEST_SESSION_TTL_MINUTES,
   },
+  storageRoot: env.STORAGE_ROOT
+    ? path.resolve(env.STORAGE_ROOT)
+    : path.resolve(process.cwd(), '..', 'server', 'storage'),
 } as const;
 
 export type AppConfig = typeof appConfig;

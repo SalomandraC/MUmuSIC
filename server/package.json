@@ -19,6 +19,8 @@
     "express": "^4.18.2",
     "express-session": "^1.18.1",
     "jsonwebtoken": "^9.0.2",
+    "mime-types": "^2.1.35",
+    "multer": "^1.4.5-lts.1",
     "morgan": "^1.10.0",
     "pg": "^8.11.3",
     "postgres": "^3.4.5",
@@ -29,7 +31,9 @@
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.2",
     "@types/express-session": "^1.18.1",
+    "@types/mime-types": "^2.1.4",
     "@types/morgan": "^1.9.10",
+    "@types/multer": "^1.4.12",
     "ts-node": "^10.9.1",
     "typescript": "^5.3.3"
   }
