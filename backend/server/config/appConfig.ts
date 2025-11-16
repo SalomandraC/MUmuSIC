@@ -5,7 +5,7 @@ dotenv.config();
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().default(5000),
+  PORT: z.coerce.number().default(5050),
   SESSION_SECRET: z.string().min(8).default('dev-session-secret'),
   DATABASE_URL: z.string().url({ message: 'DATABASE_URL must be a valid URL' }),
   SUPABASE_URL: z.string().url({ message: 'SUPABASE_URL must be a valid URL' }).optional(),

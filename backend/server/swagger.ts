@@ -13,7 +13,7 @@ const swaggerDefinition: SwaggerDefinition = {
   },
   servers: [
     {
-      url: 'http://localhost:5000',
+      url: 'http://localhost:5050',
       description: 'Development server',
     },
   ],
@@ -24,12 +24,6 @@ const swaggerDefinition: SwaggerDefinition = {
         scheme: 'bearer',
         bearerFormat: 'JWT',
         description: 'JWT access token',
-      },
-      sessionAuth: {
-        type: 'apiKey',
-        in: 'cookie',
-        name: 'connect.sid',
-        description: 'Session-based authentication (legacy)',
       },
     },
     schemas: {

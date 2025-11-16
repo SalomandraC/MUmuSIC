@@ -4,7 +4,7 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
-import { swaggerSpec } from './config/swagger';
+import { swaggerSpec } from './swagger';
 import { appConfig } from './config/appConfig';
 import authRoutes from './modules/auth/auth.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -13,6 +13,7 @@ const app: Application = express();
 
 const allowedOrigins = [
   'http://localhost:3000',
+  'http://localhost:5050',
   'https://f4x1pn2ft.localto.net',
   'http://d91098wj.beget.tech'
 ];
@@ -70,6 +71,6 @@ app.use(errorHandler);
 
 // Запуск сервера
 app.listen(Number(appConfig.port), '0.0.0.0', () => {
-  console.log(`Server running on http://0.0.0.0:${appConfig.port}`);
-  console.log(`Swagger docs available at http://0.0.0.0:${appConfig.port}/api-docs`);
+  console.log(`Server running on http://localhost:${appConfig.port}`);
+  console.log(`Swagger docs available at http://localhost:${appConfig.port}/api-docs`);
 });
