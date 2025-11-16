@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';    
 import 'package:RandomTierList/core/global_widgets/panel_header.dart';
 import 'package:RandomTierList/settings/presentation/providers/settings_provider.dart';
+import 'package:RandomTierList/theme/theme.dart';
+import 'package:RandomTierList/settings/presentation/widgets/setting_support_functions.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -14,13 +14,14 @@ class SettingsScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: theme.colorScheme.surface,
       body: SafeArea(
         child: Column(
           children: [
             PanelHeader(
               name: 'Настройки',
               showBackButton: true,
+              textColor: theme.colorScheme.primary,
               onBackClick: () => context.pop(),
             ),
             Expanded(
@@ -37,24 +38,44 @@ class SettingsScreen extends StatelessWidget {
                         onChanged: (value) {
                           settingsModel.setTheme(value);
                         },
+                        thumbColor: MaterialStateProperty.resolveWith<Color>(
+                          (Set<MaterialState> states) {
+                            if (states.contains(MaterialState.selected)) {
+                              return settingsModel.appModel.isDarkTheme
+                                  ? AppTheme.primaryColorLight
+                                  : AppTheme.primaryColor; 
+                            }
+                            return Colors.grey.shade400;
+                          },
+                        ),
+                        trackColor: MaterialStateProperty.resolveWith<Color>(
+                          (Set<MaterialState> states) {
+                            if (states.contains(MaterialState.selected)) {
+                              return (settingsModel.appModel.isDarkTheme
+                                      ? AppTheme.primaryColorLight
+                                      : AppTheme.primaryColor)
+                                  .withOpacity(0.5);
+                            }
+                            return Colors.grey.withOpacity(0.3);
+                          },
+                        ),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
-                    // Поделиться приложением
                     SettingsItem(
                       text: 'Поделиться приложением',
                       icon: Icons.share,
-                      onTap: () => _shareApp(context),
-                    ),
-                    // Связаться с поддержкой
+                      onTap: () => shareApp(context),
+                    ),        
                     SettingsItem(
                       text: 'Связаться с поддержкой',
                       icon: Icons.support_agent,
-                      onTap: () => _contactSupport(context),
+                      onTap: () => contactSupport(context),
                     ),
                     SettingsItem(
                       text: 'Пользовательское соглашение',
                       icon: Icons.arrow_forward_ios,
-                      onTap: () => _openUserAgreement(context),
+                      onTap: () => openUserAgreement(context),
                     ),
                   ],
                 ),
@@ -65,71 +86,8 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
-
-  Future<void> _shareApp(BuildContext context) async {
-    try {
-      await Share.share(
-        'Попробуйте Tier Maker - создавайте тир-листы!',
-        subject: 'Tier Maker',
-      );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка при попытке поделиться')),
-        );
-      }
-    }
-  }
-
-  Future<void> _contactSupport(BuildContext context) async {
-    try {
-      final email = 'kazak.petrushin@yandex.ru';
-      final subject = Uri.encodeComponent('Поддержка Tier Maker');
-      final body = Uri.encodeComponent('Здравствуйте,\n\n');
-      final uri = Uri.parse('mailto:$email?subject=$subject&body=$body');
-      
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Email: $email')),
-          );
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка при открытии почты')),
-        );
-      }
-    }
-  }
-
-  Future<void> _openUserAgreement(BuildContext context) async {
-    try {
-      // Замените на реальный URL пользовательского соглашения
-      final uri = Uri.parse('https://example.com/user-agreement');
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Не удалось открыть соглашение')),
-          );
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка при открытии соглашения')),
-        );
-      }
-    }
-  }
 }
 
-/// Виджет элемента настроек
 class SettingsItem extends StatelessWidget {
   final String text;
   final IconData? icon;

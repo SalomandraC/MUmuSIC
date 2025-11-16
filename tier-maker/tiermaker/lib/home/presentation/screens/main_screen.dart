@@ -12,20 +12,20 @@ class MainScreen extends StatelessWidget {
 
     final menuItems = [
       MenuItem(
-        icon: Icons.search,
-        title: 'Поиск',
+        icon: Icons.queue_music,
+        title: 'Моя медиатека',
         onTap: () {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Поиск (в разработке)')),
+            const SnackBar(content: Text('Нажмите "Моя медиатека"')),
           );
         },
       ),
       MenuItem(
         icon: Icons.library_music,
-        title: 'Моя медиатека',
+        title: 'Плейлисты',
         onTap: () {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Нажмите "Моя медиатека"')),
+            const SnackBar(content: Text('Плейлисты (в разработке)')),
           );
         },
       ),
@@ -53,7 +53,7 @@ class MainScreen extends StatelessWidget {
         child: Column(
           children: [
             const PanelHeader(
-              name: 'Tier Maker',
+              name: 'MUmuSIC',
             ),
             Expanded(
               child: Container(
