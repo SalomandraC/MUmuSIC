@@ -4,6 +4,7 @@ import 'package:RandomTierList/core/global_widgets/panel_header.dart';
 import 'package:RandomTierList/settings/presentation/providers/settings_provider.dart';
 import 'package:RandomTierList/theme/theme.dart';
 import 'package:RandomTierList/settings/presentation/widgets/setting_support_functions.dart';
+import 'package:RandomTierList/core/api/guest_tracks_api.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -76,6 +77,16 @@ class SettingsScreen extends StatelessWidget {
                       text: 'Пользовательское соглашение',
                       icon: Icons.arrow_forward_ios,
                       onTap: () => openUserAgreement(context),
+                    ),
+                    SettingsItem(
+                      text: 'Настройка API сервера',
+                      icon: Icons.settings_ethernet,
+                      onTap: () => showApiUrlSettings(context),
+                    ),
+                    SettingsItem(
+                      text: 'Тест подключения к бэкенду',
+                      icon: Icons.cloud_sync,
+                      onTap: () => testBackendConnection(context),
                     ),
                   ],
                 ),

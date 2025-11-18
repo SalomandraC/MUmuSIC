@@ -29,6 +29,8 @@ dependencies:
   math_expressions: ^2.3.0
   go_router: ^14.2.0
   share_plus: ^10.0.2
+  just_audio: ^0.9.36
+  flutter_nfc_kit: ^3.6.0
 
 dev_dependencies:
   flutter_test:

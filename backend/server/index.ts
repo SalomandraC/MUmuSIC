@@ -30,7 +30,15 @@ if (appConfig.nodeEnv === 'development') {
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
+    if (appConfig.nodeEnv === 'development') {
+      return callback(null, true);
+    }
+
+    // В production используем строгий список
+    if (!origin) {
+      // Для мобильных приложений origin может отсутствовать
+      return callback(null, true);
+    }
 
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -42,7 +50,17 @@ app.use(cors({
   allowedHeaders: [
     'Content-Type',
     'Authorization',
-    'localtonet-skip-warning'
+    'localtonet-skip-warning',
+    'Range',
+    'Accept-Ranges',
+    'Content-Range',
+    'Accept'
+  ],
+  exposedHeaders: [
+    'Content-Range',
+    'Accept-Ranges',
+    'Content-Length',
+    'Content-Type'
   ],
   credentials: true,
   optionsSuccessStatus: 200

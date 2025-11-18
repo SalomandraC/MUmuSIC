@@ -36,13 +36,6 @@ router.post('/register', (0, asyncHandler_1.asyncHandler)(auth_controller_1.Auth
  *     tags: [Auth]
  */
 router.post('/login', (0, asyncHandler_1.asyncHandler)(auth_controller_1.AuthController.login));
-/**
- * @swagger
- * /auth/logout:
- *   post:
- *     summary: Выход пользователя
- *     tags: [Auth]
- */
 router.post('/logout', (0, asyncHandler_1.asyncHandler)(auth_controller_1.AuthController.logout));
 /**
  * @swagger
@@ -72,21 +65,7 @@ router.post('/refresh-token', (0, asyncHandler_1.asyncHandler)(auth_controller_1
  *       - bearerAuth: []
  */
 router.post('/change-password', authGuard_1.authGuard, (0, asyncHandler_1.asyncHandler)(auth_controller_1.AuthController.changePassword));
-/**
- * @swagger
- * /auth/reset-password/request:
- *   post:
- *     summary: Запрос на сброс пароля
- *     tags: [Auth]
- */
 router.post('/reset-password/request', (0, asyncHandler_1.asyncHandler)(auth_controller_1.AuthController.resetPasswordRequest));
-/**
- * @swagger
- * /auth/reset-password/confirm:
- *   post:
- *     summary: Подтверждение сброса пароля
- *     tags: [Auth]
- */
 router.post('/reset-password/confirm', (0, asyncHandler_1.asyncHandler)(auth_controller_1.AuthController.resetPasswordConfirm));
 /**
  * @swagger

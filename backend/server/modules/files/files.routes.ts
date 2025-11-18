@@ -69,7 +69,7 @@ router.post('/files/:accountId', upload.single('file'), async (req: Request, res
 		}
 
 		const ext = path.extname(desiredNameFromBody).toLowerCase();
-		const allowed = new Set(['.mp3', '.flac', '.wav', '.m4a', '.ogg']);
+		const allowed = new Set(['.mp3', '.wav']);
 		if (!allowed.has(ext)) {
 			res.status(400).json({ error: 'Недопустимое расширение файла' });
 			return;
@@ -82,9 +82,7 @@ router.post('/files/:accountId', upload.single('file'), async (req: Request, res
 		const finalName = sanitizeFileName(desiredNameFromBody);
 		const finalPath = resolveSafeFilePath(accountId, finalName);
 
-		// If file exists, overwrite
 		await fs.promises.rename(uploaded.path, finalPath).catch(async (e) => {
-			// In case of cross-device rename or other errors, fallback to copy+unlink
 			if (e) {
 				await fs.promises.copyFile(uploaded.path, finalPath);
 				await fs.promises.unlink(uploaded.path);

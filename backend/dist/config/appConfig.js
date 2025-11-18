@@ -5,13 +5,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.appConfig = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
+const path_1 = __importDefault(require("path"));
 const zod_1 = require("zod");
 dotenv_1.default.config();
 const envSchema = zod_1.z.object({
     NODE_ENV: zod_1.z.enum(['development', 'test', 'production']).default('development'),
-    PORT: zod_1.z.coerce.number().default(5000),
+    PORT: zod_1.z.coerce.number().default(5050),
     SESSION_SECRET: zod_1.z.string().min(8).default('dev-session-secret'),
-    DATABASE_URL: zod_1.z.string().url({ message: 'DATABASE_URL must be a valid URL' }),
+    DATABASE_URL: zod_1.z.string().url({ message: 'DATABASE_URL must be a valid URL' }).optional(),
     SUPABASE_URL: zod_1.z.string().url({ message: 'SUPABASE_URL must be a valid URL' }).optional(),
     SUPABASE_ANON_KEY: zod_1.z.string().optional(),
     SUPABASE_SERVICE_ROLE_KEY: zod_1.z.string().optional(),
@@ -21,7 +22,8 @@ const envSchema = zod_1.z.object({
     ACCESS_TOKEN_TTL: zod_1.z.union([zod_1.z.string(), zod_1.z.number()]).default('15m'),
     REFRESH_TOKEN_TTL: zod_1.z.union([zod_1.z.string(), zod_1.z.number()]).default('7d'),
     PASSWORD_RESET_TOKEN_TTL: zod_1.z.union([zod_1.z.string(), zod_1.z.number()]).default('1h'),
-    GUEST_SESSION_TTL_MINUTES: zod_1.z.coerce.number().default(60 * 24), // 24 hours
+    GUEST_SESSION_TTL_MINUTES: zod_1.z.coerce.number().default(60 * 24),
+    STORAGE_ROOT: zod_1.z.string().optional(),
 });
 const parsedEnv = envSchema.safeParse(process.env);
 if (!parsedEnv.success) {
@@ -53,4 +55,7 @@ exports.appConfig = {
     guestSessions: {
         ttlMinutes: env.GUEST_SESSION_TTL_MINUTES,
     },
+    storageRoot: env.STORAGE_ROOT
+        ? path_1.default.resolve(env.STORAGE_ROOT)
+        : path_1.default.resolve(process.cwd(), '..', 'server', 'storage'),
 };

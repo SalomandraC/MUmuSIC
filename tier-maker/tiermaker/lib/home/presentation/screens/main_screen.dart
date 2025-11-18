@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:RandomTierList/app/app_routes.dart';
+import 'package:RandomTierList/app/state/app_model_provider.dart';
 import 'package:RandomTierList/core/global_widgets/panel_header.dart';
 
 class MainScreen extends StatelessWidget {
@@ -9,8 +10,25 @@ class MainScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final appModel = AppModelProvider.of(context);
+    final isGuest = appModel.isGuest;
 
     final menuItems = [
+      if (isGuest)
+        MenuItem(
+          icon: Icons.cloud,
+          title: 'Сеть',
+          onTap: () {
+            context.push(AppRoutes.guestTracks);
+          },
+        ),
+      MenuItem(
+        icon: Icons.nfc,
+        title: 'NFC',
+        onTap: () {
+          context.push(AppRoutes.nfc);
+        },
+      ),
       MenuItem(
         icon: Icons.queue_music,
         title: 'Моя медиатека',

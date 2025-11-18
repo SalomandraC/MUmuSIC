@@ -5,6 +5,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 class AppDatabase {
   static const String _boxName = 'appBox';
   static const String _themeKey = 'appState';
+  static const String _isGuestKey = 'isGuest';
+  static const String _userEmailKey = 'userEmail';
+  static const String _userNicknameKey = 'userNickname';
+  static const String _apiBaseUrlKey = 'apiBaseUrl';
   static Box<String>? _box;
 
   /// Проверяет и открывает box, если он еще не открыт
@@ -32,13 +36,65 @@ class AppDatabase {
     return box.get(_themeKey, defaultValue: 'ltru000000') ?? 'ltru000000';
   }
 
-  /// Сохраняет состояние приложения
   static Future<void> setAppTheme(String appState) async {
     final box = await _ensureBox();
     await box.put(_themeKey, appState);
   }
 
-  /// Закрывает box (опционально, для очистки ресурсов)
+  static Future<bool> getIsGuest() async {
+    final box = await _ensureBox();
+    final value = box.get(_isGuestKey, defaultValue: 'true');
+    return value == 'true';
+  }
+
+  static Future<void> setIsGuest(bool isGuest) async {
+    final box = await _ensureBox();
+    await box.put(_isGuestKey, isGuest.toString());
+  }
+
+  static Future<String?> getUserEmail() async {
+    final box = await _ensureBox();
+    return box.get(_userEmailKey);
+  }
+
+  static Future<void> setUserEmail(String? email) async {
+    final box = await _ensureBox();
+    if (email != null) {
+      await box.put(_userEmailKey, email);
+    } else {
+      await box.delete(_userEmailKey);
+    }
+  }
+
+  static Future<String?> getUserNickname() async {
+    final box = await _ensureBox();
+    return box.get(_userNicknameKey);
+  }
+
+  static Future<void> setUserNickname(String? nickname) async {
+    final box = await _ensureBox();
+    if (nickname != null) {
+      await box.put(_userNicknameKey, nickname);
+    } else {
+      await box.delete(_userNicknameKey);
+    }
+  }
+
+  static Future<String?> getApiBaseUrl() async {
+    final box = await _ensureBox();
+    return box.get(_apiBaseUrlKey);
+  }
+
+  static Future<void> setApiBaseUrl(String? url) async {
+    final box = await _ensureBox();
+    if (url != null && url.isNotEmpty) {
+      final cleanUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+      await box.put(_apiBaseUrlKey, cleanUrl);
+    } else {
+      await box.delete(_apiBaseUrlKey);
+    }
+  }
+
   static Future<void> close() async {
     if (_box != null && _box!.isOpen) {
       await _box!.close();
