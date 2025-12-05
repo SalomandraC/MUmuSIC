@@ -82,14 +82,26 @@ class GuestTracksApi {
   }
   
   static Future<void> setBaseUrl(String url) async {
-    await AppDatabase.setApiBaseUrl(url);
-    _cachedBaseUrl = url; 
+    // Очищаем завершающий слэш если есть
+    final cleanUrl = url.trim();
+    if (cleanUrl.isEmpty) {
+      throw ArgumentError('URL не может быть пустым');
+    }
+    
+    // Валидация базового формата URL
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      throw ArgumentError('URL должен начинаться с http:// или https://');
+    }
+    
+    await AppDatabase.setApiBaseUrl(cleanUrl);
+    _cachedBaseUrl = cleanUrl;
+    debugPrint('✅ [GuestTracksApi] URL сохранен: $cleanUrl');
   }
-  
-
+ 
   static Future<void> resetBaseUrl() async {
     await AppDatabase.setApiBaseUrl(null);
-    _cachedBaseUrl = null; 
+    _cachedBaseUrl = null;
+    debugPrint('🔄 [GuestTracksApi] URL сброшен на значение по умолчанию');
   }
   
   static String get baseUrl {

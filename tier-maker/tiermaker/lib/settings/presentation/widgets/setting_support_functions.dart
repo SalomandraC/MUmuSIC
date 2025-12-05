@@ -67,6 +67,7 @@ Future<void> shareApp(BuildContext context) async {
   Future<void> showApiUrlSettings(BuildContext context) async {
     final currentUrl = await GuestTracksApi.getBaseUrl();
     final controller = TextEditingController(text: currentUrl);
+    final theme = Theme.of(context);
     
     if (!context.mounted) return;
     
@@ -74,33 +75,90 @@ Future<void> shareApp(BuildContext context) async {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Настройка API сервера'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Введите адрес сервера:'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                hintText: 'http://192.168.31.200:5050',
-                border: OutlineInputBorder(),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Текущий адрес:',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
-              keyboardType: TextInputType.url,
-            ),
-            const SizedBox(height: 8),
-          ],
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  currentUrl,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Введите новый адрес сервера:'),
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  hintText: 'http://192.168.1.100:5050',
+                  border: OutlineInputBorder(),
+                  helperText: 'Пример: http://10.75.231.223:5050',
+                ),
+                keyboardType: TextInputType.url,
+                autofocus: true,
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () async {
+                  final current = await GuestTracksApi.getBaseUrl();
+                  controller.text = current;
+                },
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Вернуть текущий'),
+              ),
+            ],
+          ),
         ),
         actions: [
+          TextButton(
+            onPressed: () async {
+              await GuestTracksApi.resetBaseUrl();
+              if (context.mounted) {
+                Navigator.of(context).pop('reset');
+              }
+            },
+            child: const Text('Сбросить'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Отмена'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               final url = controller.text.trim();
               if (url.isNotEmpty) {
-                Navigator.of(context).pop(url);
+                // Простая валидация URL
+                if (url.startsWith('http://') || url.startsWith('https://')) {
+                  Navigator.of(context).pop(url);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('URL должен начинаться с http:// или https://'),
+                    ),
+                  );
+                }
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Введите адрес сервера'),
+                  ),
+                );
               }
             },
             child: const Text('Сохранить'),
@@ -109,17 +167,25 @@ Future<void> shareApp(BuildContext context) async {
       ),
     );
 
-    if (result != null && context.mounted) {
-      if (result == 'reset') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('URL сброшен на значение по умолчанию')),
-        );
-      } else {
-        await GuestTracksApi.setBaseUrl(result);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('URL сохранен: $result')),
-        );
-      }
+    if (!context.mounted) return;
+
+    if (result == 'reset') {
+      await GuestTracksApi.resetBaseUrl();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('URL сброшен на значение по умолчанию'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } else if (result != null && result.isNotEmpty) {
+      await GuestTracksApi.setBaseUrl(result);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('URL сохранен: $result'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 

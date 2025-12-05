@@ -13,15 +13,45 @@ class MainScreen extends StatelessWidget {
     final appModel = AppModelProvider.of(context);
     final isGuest = appModel.isGuest;
 
-    final menuItems = [
-      if (isGuest)
-        MenuItem(
-          icon: Icons.cloud,
-          title: 'Сеть',
-          onTap: () {
-            context.push(AppRoutes.guestTracks);
-          },
+    Future<void> _handleLogout() async {
+      final shouldLogout = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Выход из аккаунта'),
+          content: Text(
+            isGuest
+                ? 'Вы действительно хотите выйти из гостевой сессии?'
+                : 'Вы действительно хотите выйти из аккаунта?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Отмена'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Выйти'),
+            ),
+          ],
         ),
+      );
+
+      if (shouldLogout == true && context.mounted) {
+        await appModel.setGuestMode(true);
+        if (context.mounted) {
+          context.go(AppRoutes.auth);
+        }
+      }
+    }
+
+    final menuItems = [
+      MenuItem(
+        icon: Icons.cloud,
+        title: 'Сеть',
+        onTap: () {
+          context.push(AppRoutes.network);
+        },
+      ),
       MenuItem(
         icon: Icons.nfc,
         title: 'NFC',
@@ -63,10 +93,14 @@ class MainScreen extends StatelessWidget {
           context.push(AppRoutes.settings);
         },
       ),
+      MenuItem(
+        icon: Icons.logout,
+        title: 'Выход',
+        onTap: _handleLogout,
+      ),
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF3772E7),
       body: SafeArea(
         child: Column(
           children: [
@@ -123,6 +157,8 @@ class MenuItemWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final iconColor = theme.colorScheme.primary;
+    final textColor = theme.colorScheme.primary;
 
     return InkWell(
       onTap: item.onTap,
@@ -134,14 +170,14 @@ class MenuItemWidget extends StatelessWidget {
             Icon(
               item.icon,
               size: 26,
-              color: theme.colorScheme.primary,
+              color: iconColor,
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 item.title,
                 style: theme.textTheme.headlineSmall?.copyWith(
-                  color: theme.colorScheme.primary,
+                  color: textColor,
                 ),
               ),
             ),
@@ -156,4 +192,3 @@ class MenuItemWidget extends StatelessWidget {
     );
   }
 }
-

@@ -4,6 +4,7 @@ import 'package:RandomTierList/app/app_routes.dart';
 import 'package:RandomTierList/app/models/app_model.dart';
 import 'package:RandomTierList/app/state/app_model_provider.dart';
 import 'package:RandomTierList/home/presentation/screens/main_screen.dart';
+import 'package:RandomTierList/home/presentation/screens/network_screen.dart';
 import 'package:RandomTierList/settings/domain/model/settings_model.dart';
 import 'package:RandomTierList/settings/presentation/providers/settings_provider.dart';
 import 'package:RandomTierList/settings/presentation/screens/settings_screen.dart';
@@ -24,6 +25,7 @@ class AppRouter {
         final guestAllowedPaths = [
           AppRoutes.home,
           AppRoutes.guestTracks,
+          AppRoutes.network,
           AppRoutes.nfc,
           AppRoutes.auth,
           AppRoutes.settings,
@@ -66,6 +68,11 @@ class AppRouter {
           path: AppRoutes.guestTracks,
           name: AppRoutes.guestTracksName,
           builder: (context, state) => const GuestTracksScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.network,
+          name: AppRoutes.networkName,
+          builder: (context, state) => const NetworkScreen(),
         ),
         GoRoute(
           path: AppRoutes.nfc,

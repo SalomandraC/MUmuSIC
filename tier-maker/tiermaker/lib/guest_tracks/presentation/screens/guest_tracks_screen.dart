@@ -32,7 +32,7 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
   void initState() {
     super.initState();
     _loadTracks();
-    
+
     _audioPlayer.playerStateStream.listen((state) {
       if (mounted) {
         setState(() {
@@ -40,7 +40,7 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
         });
       }
     });
-    
+
     // Подписываемся на позицию воспроизведения
     _positionSubscription = _audioPlayer.positionStream.listen((position) {
       if (mounted) {
@@ -49,7 +49,7 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
         });
       }
     });
-    
+
     _durationSubscription = _audioPlayer.durationStream.listen((duration) {
       if (mounted) {
         setState(() {
@@ -57,13 +57,15 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
         });
       }
     });
-    
+
     _audioPlayer.processingStateStream.listen((processingState) {
-      debugPrint('🔄 [GuestTracksScreen] ProcessingState изменился: $processingState');
+      debugPrint(
+          '🔄 [GuestTracksScreen] ProcessingState изменился: $processingState');
     });
-    
+
     _audioPlayer.playbackEventStream.listen((event) {
-      debugPrint('🎵 [GuestTracksScreen] PlaybackEvent: ${event.processingState}, currentIndex=${event.currentIndex}');
+      debugPrint(
+          '🎵 [GuestTracksScreen] PlaybackEvent: ${event.processingState}, currentIndex=${event.currentIndex}');
     }, onError: (error) {
       debugPrint('❌ [GuestTracksScreen] Ошибка в playbackEventStream: $error');
     });
@@ -106,36 +108,41 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
         debugPrint('⏸️ [GuestTracksScreen] Пауза трека: ${track.title}');
         await _audioPlayer.pause();
       } else {
-        debugPrint('▶️ [GuestTracksScreen] Начало воспроизведения трека: ${track.title} (ID: ${track.id})');
-        
+        debugPrint(
+            '▶️ [GuestTracksScreen] Начало воспроизведения трека: ${track.title} (ID: ${track.id})');
+
         // Останавливаем текущий трек, если играет другой
         if (_currentlyPlayingId != null) {
           debugPrint('⏹️ [GuestTracksScreen] Остановка предыдущего трека');
           await _audioPlayer.stop();
         }
-        
+
         // Используем streamUrl из объекта трека, если доступен, иначе формируем URL
         String streamUrl;
         if (track.streamUrl.isNotEmpty) {
           streamUrl = track.streamUrl;
-          debugPrint('🔵 [GuestTracksScreen] Используем streamUrl из объекта: $streamUrl');
+          debugPrint(
+              '🔵 [GuestTracksScreen] Используем streamUrl из объекта: $streamUrl');
         } else {
           // Формируем URL по ID (более надежно, чем по названию)
           streamUrl = await GuestTracksApi.getStreamUrl(track.id);
-          debugPrint('🔵 [GuestTracksScreen] Сформирован streamUrl по ID: $streamUrl');
+          debugPrint(
+              '🔵 [GuestTracksScreen] Сформирован streamUrl по ID: $streamUrl');
         }
-        
+
         debugPrint('🔵 [GuestTracksScreen] Итоговый Stream URL: $streamUrl');
-        
+
         // Парсим URI и проверяем его валидность
         final uri = Uri.parse(streamUrl);
         debugPrint('🔵 [GuestTracksScreen] Парсинг URI: $uri');
-        debugPrint('🔵 [GuestTracksScreen] URI scheme: ${uri.scheme}, host: ${uri.host}, port: ${uri.port}, path: ${uri.path}');
-        
+        debugPrint(
+            '🔵 [GuestTracksScreen] URI scheme: ${uri.scheme}, host: ${uri.host}, port: ${uri.port}, path: ${uri.path}');
+
         if (uri.scheme != 'http' && uri.scheme != 'https') {
-          throw Exception('Неподдерживаемая схема URI: ${uri.scheme}. Ожидается http или https');
+          throw Exception(
+              'Неподдерживаемая схема URI: ${uri.scheme}. Ожидается http или https');
         }
-        
+
         // Проверяем доступность URL перед использованием
         debugPrint('🔵 [GuestTracksScreen] Проверка доступности URL...');
         try {
@@ -143,17 +150,22 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
             const Duration(seconds: 5),
             onTimeout: () {
               debugPrint('⏱️ [GuestTracksScreen] Таймаут при проверке URL');
-              throw TimeoutException('Превышено время ожидания при проверке URL');
+              throw TimeoutException(
+                  'Превышено время ожидания при проверке URL');
             },
           );
-          debugPrint('🔵 [GuestTracksScreen] HEAD запрос: статус=${headResponse.statusCode}, content-type=${headResponse.headers['content-type']}');
-          if (headResponse.statusCode != 200 && headResponse.statusCode != 206) {
-            debugPrint('⚠️ [GuestTracksScreen] Неожиданный статус код: ${headResponse.statusCode}');
+          debugPrint(
+              '🔵 [GuestTracksScreen] HEAD запрос: статус=${headResponse.statusCode}, content-type=${headResponse.headers['content-type']}');
+          if (headResponse.statusCode != 200 &&
+              headResponse.statusCode != 206) {
+            debugPrint(
+                '⚠️ [GuestTracksScreen] Неожиданный статус код: ${headResponse.statusCode}');
           }
         } catch (e) {
-          debugPrint('⚠️ [GuestTracksScreen] Предупреждение при проверке URL: $e (продолжаем попытку воспроизведения)');
+          debugPrint(
+              '⚠️ [GuestTracksScreen] Предупреждение при проверке URL: $e (продолжаем попытку воспроизведения)');
         }
-        
+
         debugPrint('🔵 [GuestTracksScreen] Создание AudioSource.uri...');
         final audioSource = AudioSource.uri(
           uri,
@@ -161,61 +173,67 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
             'accept': 'audio/mpeg',
           },
         );
-        debugPrint('🔵 [GuestTracksScreen] AudioSource создан, установка источника...');
+        debugPrint(
+            '🔵 [GuestTracksScreen] AudioSource создан, установка источника...');
         try {
           await _audioPlayer.setAudioSource(audioSource);
           debugPrint('✅ [GuestTracksScreen] Аудио источник установлен успешно');
         } catch (e, stackTrace) {
-          debugPrint('❌ [GuestTracksScreen] Ошибка при установке источника: $e');
+          debugPrint(
+              '❌ [GuestTracksScreen] Ошибка при установке источника: $e');
           debugPrint('❌ [GuestTracksScreen] Тип ошибки: ${e.runtimeType}');
           debugPrint('❌ [GuestTracksScreen] Stack trace: $stackTrace');
           throw Exception('Не удалось загрузить аудио: $e');
         }
-        
+
         // Ждем, пока плеер обработает источник
         debugPrint('⏳ [GuestTracksScreen] Ожидание готовности плеера...');
         int attempts = 0;
         const maxAttempts = 20; // Увеличиваем до 20 попыток (4 секунды)
         bool isReady = false;
-        
+
         while (attempts < maxAttempts) {
           final state = _audioPlayer.playerState;
           final processingState = state.processingState;
-          debugPrint('🔄 [GuestTracksScreen] Попытка ${attempts + 1}/$maxAttempts: processingState=$processingState, playing=${state.playing}');
-          
+          debugPrint(
+              '🔄 [GuestTracksScreen] Попытка ${attempts + 1}/$maxAttempts: processingState=$processingState, playing=${state.playing}');
+
           if (processingState == ProcessingState.ready) {
             debugPrint('✅ [GuestTracksScreen] Плеер готов к воспроизведению');
             isReady = true;
             break;
           }
-          
+
           // Проверяем, что состояние не idle после попыток загрузки
           if (attempts > 5 && processingState == ProcessingState.idle) {
-            final errorMessage = 'Плеер не смог загрузить источник. Состояние: $processingState';
+            final errorMessage =
+                'Плеер не смог загрузить источник. Состояние: $processingState';
             debugPrint('❌ [GuestTracksScreen] $errorMessage');
             throw Exception(errorMessage);
           }
-          
+
           // Если состояние loading или buffering, продолжаем ждать
-          if (processingState == ProcessingState.loading || 
+          if (processingState == ProcessingState.loading ||
               processingState == ProcessingState.buffering) {
             debugPrint('⏳ [GuestTracksScreen] Плеер загружает/буферизует...');
           }
-          
+
           await Future.delayed(const Duration(milliseconds: 200));
           attempts++;
         }
-        
+
         // Проверяем финальное состояние
         final playerState = _audioPlayer.playerState;
-        debugPrint('🎵 [GuestTracksScreen] Финальное состояние: playing=${playerState.playing}, processingState=${playerState.processingState}');
-        
+        debugPrint(
+            '🎵 [GuestTracksScreen] Финальное состояние: playing=${playerState.playing}, processingState=${playerState.processingState}');
+
         if (!isReady && playerState.processingState != ProcessingState.ready) {
-          final errorMsg = 'Плеер не готов к воспроизведению после $maxAttempts попыток. Состояние: ${playerState.processingState}';
+          final errorMsg =
+              'Плеер не готов к воспроизведению после $maxAttempts попыток. Состояние: ${playerState.processingState}';
           debugPrint('❌ [GuestTracksScreen] $errorMsg');
           throw Exception(errorMsg);
         }
-        
+
         // Начинаем воспроизведение
         debugPrint('▶️ [GuestTracksScreen] Запуск воспроизведения...');
         try {
@@ -225,33 +243,37 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
           debugPrint('❌ [GuestTracksScreen] Ошибка при вызове play(): $e');
           throw Exception('Не удалось начать воспроизведение: $e');
         }
-        
+
         // Ждем и проверяем, что воспроизведение началось
         await Future.delayed(const Duration(milliseconds: 1000));
         final stateAfterPlay = _audioPlayer.playerState;
-        debugPrint('🎵 [GuestTracksScreen] Состояние плеера после play: playing=${stateAfterPlay.playing}, processingState=${stateAfterPlay.processingState}');
-        
+        debugPrint(
+            '🎵 [GuestTracksScreen] Состояние плеера после play: playing=${stateAfterPlay.playing}, processingState=${stateAfterPlay.processingState}');
+
         if (!stateAfterPlay.playing) {
           debugPrint('⚠️ [GuestTracksScreen] Плеер не начал воспроизведение!');
           if (stateAfterPlay.processingState == ProcessingState.idle) {
-            throw Exception('Ошибка обработки аудио. Проверьте формат файла и URL.');
+            throw Exception(
+                'Ошибка обработки аудио. Проверьте формат файла и URL.');
           }
         } else {
           debugPrint('✅ [GuestTracksScreen] Воспроизведение запущено успешно');
         }
-        
+
         setState(() {
           _currentlyPlayingId = track.id;
         });
       }
     } on PlatformException catch (e) {
-      debugPrint('❌ [GuestTracksScreen] PlatformException: ${e.code} - ${e.message}');
+      debugPrint(
+          '❌ [GuestTracksScreen] PlatformException: ${e.code} - ${e.message}');
       debugPrint('❌ [GuestTracksScreen] Details: ${e.details}');
       debugPrint('❌ [GuestTracksScreen] Stack trace: ${StackTrace.current}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка воспроизведения: ${e.message ?? e.code}\nПроверьте формат аудио и подключение к серверу'),
+            content: Text(
+                'Ошибка воспроизведения: ${e.message ?? e.code}\nПроверьте формат аудио и подключение к серверу'),
             duration: const Duration(seconds: 5),
             backgroundColor: Colors.red,
           ),
@@ -264,7 +286,8 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка воспроизведения: ${e.toString()}\nПроверьте подключение к серверу'),
+            content: Text(
+                'Ошибка воспроизведения: ${e.toString()}\nПроверьте подключение к серверу'),
             duration: const Duration(seconds: 5),
             backgroundColor: Colors.red,
           ),
@@ -309,7 +332,7 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
       // Прокручиваем к найденному треку
       final itemHeight = 80.0; // Примерная высота элемента списка
       final scrollOffset = foundIndex * itemHeight;
-      
+
       _scrollController.animateTo(
         scrollOffset,
         duration: const Duration(milliseconds: 300),
@@ -391,51 +414,52 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
                 ),
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
-                        : _errorMessage != null
-                            ? Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(24.0),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.error_outline,
-                                        size: 64,
-                                        color: theme.colorScheme.error,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'Ошибка подключения',
-                                        style: theme.textTheme.headlineSmall?.copyWith(
-                                          color: theme.colorScheme.error,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        _errorMessage!,
-                                        style: theme.textTheme.bodyMedium?.copyWith(
-                                          color: theme.colorScheme.onSurface,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 24),
-                                      ElevatedButton.icon(
-                                        onPressed: _loadTracks,
-                                        icon: const Icon(Icons.refresh),
-                                        label: const Text('Повторить'),
-                                        style: ElevatedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 24,
-                                            vertical: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                    : _errorMessage != null
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    size: 64,
+                                    color: theme.colorScheme.error,
                                   ),
-                                ),
-                              )
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Ошибка подключения',
+                                    style:
+                                        theme.textTheme.headlineSmall?.copyWith(
+                                      color: theme.colorScheme.error,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    _errorMessage!,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  ElevatedButton.icon(
+                                    onPressed: _loadTracks,
+                                    icon: const Icon(Icons.refresh),
+                                    label: const Text('Повторить'),
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
                         : _tracks.isEmpty
                             ? Center(
                                 child: Text(
@@ -445,75 +469,84 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
                               )
                             : ListView.builder(
                                 controller: _scrollController,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
                                 itemCount: _tracks.length,
-                                      itemBuilder: (context, index) {
-                                        final track = _tracks[index];
-                                        final isCurrentlyPlaying = _currentlyPlayingId == track.id;
+                                itemBuilder: (context, index) {
+                                  final track = _tracks[index];
+                                  final isCurrentlyPlaying =
+                                      _currentlyPlayingId == track.id;
 
-                                        return Card(
-                                          margin: const EdgeInsets.only(bottom: 8),
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    color: isCurrentlyPlaying
+                                        ? theme.colorScheme.primaryContainer
+                                            .withValues(alpha: 0.3)
+                                        : null,
+                                    child: ListTile(
+                                      leading: IconButton(
+                                        icon: Icon(
+                                          isCurrentlyPlaying && _isPlaying
+                                              ? Icons.pause_circle_filled
+                                              : Icons.play_circle_filled,
                                           color: isCurrentlyPlaying
-                                              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
+                                              ? theme.colorScheme.primary
+                                              : theme
+                                                  .colorScheme.onSurfaceVariant,
+                                          size: 40,
+                                        ),
+                                        onPressed: () => _playTrack(track),
+                                      ),
+                                      title: Text(
+                                        track.title,
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                          fontWeight: isCurrentlyPlaying
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: isCurrentlyPlaying
+                                              ? theme.colorScheme.primary
                                               : null,
-                                          child: ListTile(
-                                            leading: IconButton(
-                                              icon: Icon(
-                                                isCurrentlyPlaying && _isPlaying
-                                                    ? Icons.pause_circle_filled
-                                                    : Icons.play_circle_filled,
-                                                color: isCurrentlyPlaying
-                                                    ? theme.colorScheme.primary
-                                                    : theme.colorScheme.onSurfaceVariant,
-                                                size: 40,
-                                              ),
-                                              onPressed: () => _playTrack(track),
+                                        ),
+                                      ),
+                                      subtitle: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          if (track.artist.isNotEmpty)
+                                            Text(
+                                              track.artist,
+                                              style: theme.textTheme.bodyMedium,
                                             ),
-                                            title: Text(
-                                              track.title,
-                                              style: theme.textTheme.titleMedium?.copyWith(
-                                                fontWeight: isCurrentlyPlaying
-                                                    ? FontWeight.bold
-                                                    : FontWeight.normal,
-                                                color: isCurrentlyPlaying
-                                                    ? theme.colorScheme.primary
-                                                    : null,
-                                              ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _formatDuration(track.duration),
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              color: theme
+                                                  .colorScheme.onSurfaceVariant,
                                             ),
-                                            subtitle: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                if (track.artist.isNotEmpty)
-                                                  Text(
-                                                    track.artist,
-                                                    style: theme.textTheme.bodyMedium,
-                                                  ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  _formatDuration(track.duration),
-                                                  style: theme.textTheme.bodySmall?.copyWith(
-                                                    color: theme.colorScheme.onSurfaceVariant,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            trailing: isCurrentlyPlaying
-                                                ? Icon(
-                                                    Icons.graphic_eq,
-                                                    color: theme.colorScheme.primary,
-                                                  )
-                                                : null,
-                                            onTap: () => _playTrack(track),
-                                            enableFeedback: false,
                                           ),
-                                        );
-                                      },
+                                        ],
+                                      ),
+                                      trailing: isCurrentlyPlaying
+                                          ? Icon(
+                                              Icons.graphic_eq,
+                                              color: theme.colorScheme.primary,
+                                            )
+                                          : null,
+                                      onTap: () => _playTrack(track),
+                                      enableFeedback: false,
                                     ),
+                                  );
+                                },
+                              ),
               ),
             ),
             if (_currentlyPlayingId != null)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerHighest,
                   border: Border(
@@ -534,7 +567,10 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                _tracks.firstWhere((t) => t.id == _currentlyPlayingId).title,
+                                _tracks
+                                    .firstWhere(
+                                        (t) => t.id == _currentlyPlayingId)
+                                    .title,
                                 style: theme.textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -542,7 +578,10 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                _tracks.firstWhere((t) => t.id == _currentlyPlayingId).artist,
+                                _tracks
+                                    .firstWhere(
+                                        (t) => t.id == _currentlyPlayingId)
+                                    .artist,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
@@ -604,7 +643,9 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
                         IconButton(
                           iconSize: 48,
                           icon: Icon(
-                            _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                            _isPlaying
+                                ? Icons.pause_circle_filled
+                                : Icons.play_circle_filled,
                             color: theme.colorScheme.primary,
                           ),
                           onPressed: () {
@@ -633,4 +674,3 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
     );
   }
 }
-
