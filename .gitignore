@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+.env
+build/
+.dart_tool/
+**/local.properties
+**/ephemeral/
+*.iml
+.DS_Store
+Thumbs.db
+
