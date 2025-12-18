@@ -2,19 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
+import '../config/env_config.dart';
 
 /// Сервис для проверки подключения к бэкенду
 class BackendConnectionTest {
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://192.168.31.200:5050';
-    }
-    
-    if (Platform.isAndroid) {
-      return 'http://192.168.31.200:5050';
-    }
-    return 'http://192.168.31.200:5050';
+    return EnvConfig.getApiBaseUrl();
   }
 
   static Future<Map<String, dynamic>> checkHealth() async {

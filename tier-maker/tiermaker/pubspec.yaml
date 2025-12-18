@@ -31,12 +31,13 @@ dependencies:
   share_plus: ^10.0.2
   just_audio: ^0.9.36
   flutter_nfc_kit: ^3.6.0
+  flutter_dotenv: ^5.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-  mocktail: ^1.0.0
+  mocktail: ^1.0.4
 
 
 flutter_launcher_icons:
@@ -49,4 +50,5 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
-  assets: 
+  assets:
+    - .env 

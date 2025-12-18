@@ -37,7 +37,7 @@ class MainScreen extends StatelessWidget {
       );
 
       if (shouldLogout == true && context.mounted) {
-        await appModel.setGuestMode(true);
+        await appModel.clearAuthData();
         if (context.mounted) {
           context.go(AppRoutes.auth);
         }
@@ -60,30 +60,31 @@ class MainScreen extends StatelessWidget {
         },
       ),
       MenuItem(
-        icon: Icons.queue_music,
-        title: 'Моя медиатека',
+        icon: Icons.storage,
+        title: 'Внутреннее хранилище',
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Нажмите "Моя медиатека"')),
-          );
+          context.push(AppRoutes.storage);
         },
       ),
       MenuItem(
         icon: Icons.library_music,
         title: 'Плейлисты',
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Плейлисты (в разработке)')),
-          );
+          context.push(AppRoutes.playlists);
         },
       ),
       MenuItem(
         icon: Icons.favorite_border,
         title: 'Избранное',
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Нажмите "Избранное"')),
-          );
+          context.push(AppRoutes.favorites);
+        },
+      ),
+      MenuItem(
+        icon: Icons.trending_up,
+        title: 'Топ-чарт',
+        onTap: () {
+          context.push(AppRoutes.topCharts);
         },
       ),
       MenuItem(

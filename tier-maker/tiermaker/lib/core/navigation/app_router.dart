@@ -11,6 +11,12 @@ import 'package:RandomTierList/settings/presentation/screens/settings_screen.dar
 import 'package:RandomTierList/auth/presentation/screens/auth_screen.dart';
 import 'package:RandomTierList/guest_tracks/presentation/screens/guest_tracks_screen.dart';
 import 'package:RandomTierList/nfc/presentation/screens/nfc_screen.dart';
+import 'package:RandomTierList/search/presentation/screens/search_screen.dart';
+import 'package:RandomTierList/favorites/presentation/screens/favorites_screen.dart';
+import 'package:RandomTierList/playlists/presentation/screens/playlists_screen.dart';
+import 'package:RandomTierList/playlists/presentation/screens/playlist_details_screen.dart';
+import 'package:RandomTierList/storage/presentation/screens/storage_screen.dart';
+import 'package:RandomTierList/top_charts/presentation/screens/top_charts_screen.dart';
 
 class AppRouter {
   static GoRouter createRouter(AppModel appModel) {
@@ -29,10 +35,23 @@ class AppRouter {
           AppRoutes.nfc,
           AppRoutes.auth,
           AppRoutes.settings,
+          AppRoutes.search,
+          AppRoutes.favorites,
+          AppRoutes.playlists,
+          AppRoutes.storage,
+          AppRoutes.topCharts,
         ];
         
-        if (model.isGuest && !guestAllowedPaths.contains(currentPath)) {
-          return AppRoutes.home;
+        // Проверяем пути с параметрами (например, /playlist-details/123)
+        final isPlaylistDetails = currentPath.startsWith(AppRoutes.playlistDetails);
+        
+        if (model.isGuest) {
+          // Для гостя разрешаем доступ к плейлистам и их деталям
+          if (isPlaylistDetails || guestAllowedPaths.contains(currentPath)) {
+            // Разрешаем доступ
+          } else {
+            return AppRoutes.home;
+          }
         }
         
         if (!model.isGuest && isAuth) {
@@ -78,6 +97,39 @@ class AppRouter {
           path: AppRoutes.nfc,
           name: AppRoutes.nfcName,
           builder: (context, state) => const NfcScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.search,
+          name: AppRoutes.searchName,
+          builder: (context, state) => const SearchScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.favorites,
+          name: AppRoutes.favoritesName,
+          builder: (context, state) => const FavoritesScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.playlists,
+          name: AppRoutes.playlistsName,
+          builder: (context, state) => const PlaylistsScreen(),
+        ),
+        GoRoute(
+          path: '${AppRoutes.playlistDetails}/:id',
+          name: AppRoutes.playlistDetailsName,
+          builder: (context, state) {
+            final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+            return PlaylistDetailsScreen(playlistId: id);
+          },
+        ),
+        GoRoute(
+          path: AppRoutes.storage,
+          name: AppRoutes.storageName,
+          builder: (context, state) => const StorageScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.topCharts,
+          name: AppRoutes.topChartsName,
+          builder: (context, state) => const TopChartsScreen(),
         ),
       ],
       errorBuilder: (context, state) => Scaffold(

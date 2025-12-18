@@ -7,6 +7,15 @@ import { appConfig } from '../../config/appConfig';
 
 const router = Router();
 
+// Логирование для отладки
+router.use((req, res, next) => {
+  if (req.path.startsWith('/tracks')) {
+    console.error(`[FilesRoutes] WARNING: /tracks request reached filesRoutes! This should not happen.`);
+    console.error(`  Method: ${req.method}, Path: ${req.path}`);
+  }
+  next();
+});
+
 const upload = multer({ dest: path.join(appConfig.storageRoot, '.tmp') });
 
 function ensureDirectoryExists(directoryPath: string): void {

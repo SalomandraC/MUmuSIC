@@ -606,7 +606,8 @@ class _GuestTracksScreenState extends State<GuestTracksScreen> {
                         Expanded(
                           child: Slider(
                             value: _duration.inMilliseconds > 0
-                                ? _position.inMilliseconds.toDouble()
+                                ? (_position.inMilliseconds.toDouble())
+                                    .clamp(0.0, _duration.inMilliseconds.toDouble())
                                 : 0.0,
                             max: _duration.inMilliseconds > 0
                                 ? _duration.inMilliseconds.toDouble()

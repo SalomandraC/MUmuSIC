@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:RandomTierList/core/app_database/app_database.dart';
+import '../config/env_config.dart';
 
 class GuestTrack {
   final int id;
@@ -58,145 +59,150 @@ class GuestTracksApi {
     if (_cachedBaseUrl != null) {
       return _cachedBaseUrl!;
     }
-    
+
     final savedUrl = await AppDatabase.getApiBaseUrl();
     if (savedUrl != null && savedUrl.isNotEmpty) {
       _cachedBaseUrl = savedUrl;
       return savedUrl;
     }
-    
+
     final defaultUrl = _getDefaultBaseUrl();
     _cachedBaseUrl = defaultUrl;
     return defaultUrl;
   }
-  
+
   static String _getDefaultBaseUrl() {
-    if (kIsWeb) {
-      return 'http://localhost:5050';
-    }
-    
-    if (Platform.isAndroid) {
-      return 'http://192.168.31.200:5050'; 
-    }
-    return 'http://192.168.31.200:5050';
+    return EnvConfig.getApiBaseUrl();
   }
-  
+
   static Future<void> setBaseUrl(String url) async {
     // Очищаем завершающий слэш если есть
     final cleanUrl = url.trim();
     if (cleanUrl.isEmpty) {
       throw ArgumentError('URL не может быть пустым');
     }
-    
+
     // Валидация базового формата URL
     if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
       throw ArgumentError('URL должен начинаться с http:// или https://');
     }
-    
+
     await AppDatabase.setApiBaseUrl(cleanUrl);
     _cachedBaseUrl = cleanUrl;
-    debugPrint('✅ [GuestTracksApi] URL сохранен: $cleanUrl');
+    debugPrint('[GuestTracksApi] URL сохранен: $cleanUrl');
   }
- 
+
   static Future<void> resetBaseUrl() async {
     await AppDatabase.setApiBaseUrl(null);
     _cachedBaseUrl = null;
     debugPrint('🔄 [GuestTracksApi] URL сброшен на значение по умолчанию');
   }
-  
+
   static String get baseUrl {
     return _cachedBaseUrl ?? _getDefaultBaseUrl();
   }
 
-  static Future<List<GuestTrack>> getGuestTracks({bool logResponse = false}) async {
+  static Future<List<GuestTrack>> getGuestTracks(
+      {bool logResponse = false}) async {
     try {
       final baseUrlValue = await getBaseUrl();
       final url = '$baseUrlValue/guest-tracks';
-      debugPrint('🔵 [GuestTracksApi] Запрос к: $url');
-      debugPrint('🔵 [GuestTracksApi] Platform: ${Platform.operatingSystem}');
-      debugPrint('🔵 [GuestTracksApi] Base URL: $baseUrlValue');
-      
+      debugPrint('[GuestTracksApi] Запрос к: $url');
+      debugPrint('[GuestTracksApi] Platform: ${Platform.operatingSystem}');
+      debugPrint('[GuestTracksApi] Base URL: $baseUrlValue');
+
       final response = await http.get(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
       ).timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          debugPrint('⏱️ [GuestTracksApi] Превышено время ожидания (10 сек)');
+          debugPrint('[GuestTracksApi] Превышено время ожидания (10 сек)');
           throw TimeoutException('Превышено время ожидания ответа от сервера');
         },
       );
 
-      debugPrint('🔵 [GuestTracksApi] Статус ответа: ${response.statusCode}');
-      
+      debugPrint('[GuestTracksApi] Статус ответа: ${response.statusCode}');
+
       if (response.statusCode == 200) {
-        final List<dynamic> jsonList = json.decode(response.body) as List<dynamic>;
-        final tracks = jsonList.map((json) => GuestTrack.fromJson(json as Map<String, dynamic>)).toList();
-        
+        final List<dynamic> jsonList =
+            json.decode(response.body) as List<dynamic>;
+        final tracks = jsonList
+            .map((json) => GuestTrack.fromJson(json as Map<String, dynamic>))
+            .toList();
+
         // Логирование данных
         if (logResponse || kDebugMode) {
-          debugPrint('✅ [GuestTracksApi] Получено треков: ${tracks.length}');
-          debugPrint('📦 [GuestTracksApi] Полный ответ сервера:');
+          debugPrint('[GuestTracksApi] Получено треков: ${tracks.length}');
+          debugPrint('[GuestTracksApi] Полный ответ сервера:');
           debugPrint(response.body);
-          debugPrint('📋 [GuestTracksApi] Список треков:');
+          debugPrint('[GuestTracksApi] Список треков:');
           for (var track in tracks) {
-            debugPrint('  - ID: ${track.id}, Название: ${track.title}, Артист: ${track.artist}');
+            debugPrint(
+                '  - ID: ${track.id}, Название: ${track.title}, Артист: ${track.artist}');
             debugPrint('    URL: ${track.url}, Stream URL: ${track.streamUrl}');
           }
         }
-        
+
         return tracks;
       } else {
-        debugPrint('❌ [GuestTracksApi] Ошибка: ${response.statusCode}');
-        debugPrint('📦 [GuestTracksApi] Тело ответа: ${response.body}');
+        debugPrint('[GuestTracksApi] Ошибка: ${response.statusCode}');
+        debugPrint('[GuestTracksApi] Тело ответа: ${response.body}');
         throw Exception('Ошибка загрузки треков: ${response.statusCode}');
       }
     } on TimeoutException catch (e) {
       String message = 'Превышено время ожидания ответа от сервера.\n';
       message += '\nВозможные причины:';
-      message += '\n1. Сервер не запущен - запустите: cd backend && npm run dev';
+      message +=
+          '\n1. Сервер не запущен - запустите: cd backend && npm run dev';
       message += '\n2. Неправильный адрес сервера';
-      
+
       if (Platform.isAndroid) {
         if (baseUrl.contains('10.0.2.2')) {
           message += '\n3. Вы используете реальное Android устройство?';
           message += '\n   Адрес 10.0.2.2 работает только в эмуляторе!';
-          message += '\n   Для реального устройства используйте IP вашего компьютера.';
-          message += '\n   Узнайте IP: Windows (ipconfig), Mac/Linux (ifconfig)';
+          message +=
+              '\n   Для реального устройства используйте IP вашего компьютера.';
+          message +=
+              '\n   Узнайте IP: Windows (ipconfig), Mac/Linux (ifconfig)';
           message += '\n   Пример: http://192.168.1.100:5050';
         } else {
           message += '\n3. Проверьте, что сервер доступен по адресу: $baseUrl';
         }
       } else {
         message += '\n3. Проверьте, что сервер запущен на: $baseUrl';
-        message += '\n   Убедитесь, что сервер слушает на 0.0.0.0, а не только localhost';
+        message +=
+            '\n   Убедитесь, что сервер слушает на 0.0.0.0, а не только localhost';
       }
-      
-      debugPrint('❌ [GuestTracksApi] TimeoutException: ${e.message}');
-      debugPrint('💡 [GuestTracksApi] Подсказка: $message');
+
+      debugPrint('[GuestTracksApi] TimeoutException: ${e.message}');
+      debugPrint('[GuestTracksApi] Подсказка: $message');
       throw Exception('$message\nОшибка: ${e.message}');
     } on SocketException catch (e) {
       String message = 'Не удалось подключиться к серверу.\n';
       message += '\nВозможные причины:';
-      message += '\n1. Сервер не запущен - запустите: cd backend && npm run dev';
+      message +=
+          '\n1. Сервер не запущен - запустите: cd backend && npm run dev';
       message += '\n2. Неправильный адрес или порт';
-      
+
       if (Platform.isAndroid && baseUrl.contains('10.0.2.2')) {
         message += '\n3. Вы используете реальное устройство?';
         message += '\n   Адрес 10.0.2.2 работает только в эмуляторе!';
-        message += '\n   Для реального устройства используйте IP вашего компьютера.';
+        message +=
+            '\n   Для реального устройства используйте IP вашего компьютера.';
         message += '\n   Пример: http://192.168.1.100:5050';
       } else if (baseUrl.contains('localhost')) {
         message += '\n3. Проверьте, что сервер запущен на $baseUrl';
-        message += '\n   Убедитесь, что сервер слушает на 0.0.0.0, а не только localhost';
+        message +=
+            '\n   Убедитесь, что сервер слушает на 0.0.0.0, а не только localhost';
       }
-      
-      debugPrint('❌ [GuestTracksApi] SocketException: ${e.message}');
-      debugPrint('💡 [GuestTracksApi] Подсказка: $message');
+
+      debugPrint('[GuestTracksApi] SocketException: ${e.message}');
+      debugPrint('[GuestTracksApi] Подсказка: $message');
       throw Exception('$message\nОшибка: ${e.message}');
     } catch (e) {
-      debugPrint('❌ [GuestTracksApi] Общая ошибка: $e');
-      debugPrint('💡 [GuestTracksApi] Тип ошибки: ${e.runtimeType}');
+      debugPrint('[GuestTracksApi] Общая ошибка: $e');
+      debugPrint('[GuestTracksApi] Тип ошибки: ${e.runtimeType}');
       throw Exception('Ошибка при получении треков: $e');
     }
   }
@@ -205,18 +211,18 @@ class GuestTracksApi {
   static Future<void> testConnection() async {
     final baseUrlValue = await getBaseUrl();
     debugPrint('\n═══════════════════════════════════════');
-    debugPrint('🧪 Тестирование подключения к бэкенду');
+    debugPrint('Тестирование подключения к бэкенду');
     debugPrint('═══════════════════════════════════════');
-    debugPrint('📍 Base URL: $baseUrlValue');
-    debugPrint('🔗 Endpoint: $baseUrlValue/guest-tracks');
+    debugPrint('Base URL: $baseUrlValue');
+    debugPrint('Endpoint: $baseUrlValue/guest-tracks');
     debugPrint('═══════════════════════════════════════\n');
-    
+
     try {
       final tracks = await getGuestTracks(logResponse: true);
-      debugPrint('\n✅ Успешно! Получено ${tracks.length} треков');
+      debugPrint('\nУспешно! Получено ${tracks.length} треков');
       debugPrint('═══════════════════════════════════════\n');
     } catch (e) {
-      debugPrint('\n❌ Ошибка подключения: $e');
+      debugPrint('\nОшибка подключения: $e');
       debugPrint('═══════════════════════════════════════\n');
     }
   }
@@ -249,4 +255,3 @@ class GuestTracksApi {
     return '$baseUrlValue/guest-tracks/nfc/stream?title=$encodedTitle';
   }
 }
-

@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:RandomTierList/core/global_widgets/panel_header.dart';
+import 'package:RandomTierList/domain/entities/track.dart' as domain;
+import 'package:RandomTierList/domain/repositories/tracks_repository.dart'
+    as domain_repo;
+import 'package:RandomTierList/domain/usecases/get_favorites_usecase.dart';
+import 'package:RandomTierList/domain/usecases/toggle_favorite_usecase.dart';
+import 'package:RandomTierList/di/dependency_injection.dart';
 import 'package:RandomTierList/home/domain/model/network_track_model.dart';
 import 'package:RandomTierList/home/domain/repository/i_network_repository.dart';
 import 'package:RandomTierList/home/domain/repository/network_repository_impl.dart';
@@ -11,6 +17,7 @@ import 'package:RandomTierList/home/domain/usecase/search_tracks_usecase.dart';
 import 'package:RandomTierList/home/presentation/providers/network_provider.dart';
 import 'package:RandomTierList/home/presentation/state/network_model.dart';
 import 'package:RandomTierList/home/presentation/widgets/network_track_item.dart';
+import 'package:RandomTierList/home/presentation/screens/network_track_details_screen.dart';
 
 class NetworkScreen extends StatefulWidget {
   const NetworkScreen({super.key});
@@ -32,6 +39,19 @@ class _NetworkScreenState extends State<NetworkScreen> {
   late final DownloadTrackUseCase _downloadUseCase;
   late final INetworkRepository _repository;
 
+  // История поиска и избранное
+  List<String> _searchHistory = [];
+  bool _showHistory = false;
+  Set<String> _favoriteIds = {};
+
+  // Domain use cases / репозитории
+  final GetFavoritesUseCase _getFavoritesUseCase =
+      DependencyInjection.getFavoritesUseCase;
+  final ToggleFavoriteUseCase _toggleFavoriteUseCase =
+      DependencyInjection.toggleFavoriteUseCase;
+  final domain_repo.TracksRepository _tracksRepository =
+      DependencyInjection.tracksRepository;
+
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   double _playbackSpeed = 1.0;
@@ -45,6 +65,10 @@ class _NetworkScreenState extends State<NetworkScreen> {
     _model = NetworkModel();
 
     _searchController.addListener(_onSearchChanged);
+
+    // Загружаем историю и избранное
+    _loadSearchHistory();
+    _loadFavorites();
 
     _audioPlayer.playerStateStream.listen((state) {
       if (mounted) {
@@ -81,14 +105,39 @@ class _NetworkScreenState extends State<NetworkScreen> {
     super.dispose();
   }
 
+  Future<void> _loadSearchHistory() async {
+    final history = await _tracksRepository.getSearchHistory();
+    if (!mounted) return;
+    setState(() {
+      _searchHistory = history;
+      _showHistory = _searchController.text.trim().isEmpty &&
+          _searchHistory.isNotEmpty;
+    });
+  }
+
+  Future<void> _loadFavorites() async {
+    final favorites = await _getFavoritesUseCase.execute();
+    if (!mounted) return;
+    setState(() {
+      _favoriteIds = favorites.map((t) => t.id.toString()).toSet();
+    });
+  }
+
   void _onSearchChanged() {
     _searchDebounceTimer?.cancel();
     final query = _searchController.text.trim();
 
     if (query.isEmpty) {
       _model.setTracks([]);
+      setState(() {
+        _showHistory = _searchHistory.isNotEmpty;
+      });
       return;
     }
+
+    setState(() {
+      _showHistory = false;
+    });
 
     _searchDebounceTimer = Timer(const Duration(milliseconds: 1000), () {
       _performSearch(query);
@@ -102,10 +151,69 @@ class _NetworkScreenState extends State<NetworkScreen> {
     try {
       final tracks = await _searchUseCase.execute(query: query, limit: 50);
       _model.setTracks(tracks);
+
+      // Сохраняем запрос в историю
+      await _tracksRepository.addToSearchHistory(query);
+      await _loadSearchHistory();
     } catch (e) {
       _model.setError('Ошибка поиска: $e');
     } finally {
       _model.setSearching(false);
+    }
+  }
+
+  domain.TrackEntity _mapNetworkToDomain(NetworkTrack track) {
+    final trackId = track.trackId ?? track.uniqueId.hashCode;
+    return domain.TrackEntity(
+      id: trackId,
+      trackName: track.trackName,
+      artistName: track.artistName,
+      trackTime: track.formattedDuration,
+      image: track.artworkUrl100,
+      previewUrl: track.previewUrl,
+    );
+  }
+
+  Future<void> _toggleFavorite(NetworkTrack track) async {
+    try {
+      final entity = _mapNetworkToDomain(track);
+      final updated = await _toggleFavoriteUseCase.execute(entity);
+      if (!mounted) return;
+      setState(() {
+        final idStr = updated.id.toString();
+        if (updated.favorite) {
+          _favoriteIds.add(idStr);
+        } else {
+          _favoriteIds.remove(idStr);
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка обновления избранного: $e'),
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openTrackDetails(NetworkTrack track) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => NetworkTrackDetailsScreen(
+          track: track,
+          isFavorite: _favoriteIds.contains(
+            (track.trackId ?? track.uniqueId.hashCode).toString(),
+          ),
+        ),
+      ),
+    );
+
+    if (result == true) {
+      // Обновляем список избранного после закрытия экрана деталей
+      await _loadFavorites();
     }
   }
 
@@ -316,6 +424,52 @@ class _NetworkScreenState extends State<NetworkScreen> {
                         );
                       }
 
+                      if (_showHistory && _searchHistory.isNotEmpty) {
+                        return ListView.builder(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          itemCount: _searchHistory.length + 1,
+                          itemBuilder: (context, index) {
+                            if (index == 0) {
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'История поиска',
+                                      style: theme.textTheme.titleSmall,
+                                    ),
+                                    TextButton(
+                                      onPressed: () async {
+                                        await _tracksRepository
+                                            .clearSearchHistory();
+                                        await _loadSearchHistory();
+                                      },
+                                      child: const Text('Очистить'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            final item = _searchHistory[index - 1];
+                            return ListTile(
+                              leading: const Icon(Icons.history),
+                              title: Text(item),
+                              onTap: () {
+                                _searchController.text = item;
+                                _performSearch(item);
+                              },
+                            );
+                          },
+                        );
+                      }
+
                       if (_model.tracks.isEmpty) {
                         return Center(
                           child: Column(
@@ -350,14 +504,20 @@ class _NetworkScreenState extends State<NetworkScreen> {
                           final trackId = track.uniqueId;
                           final isCurrentlyPlaying =
                               _model.currentlyPlayingId == trackId;
+                          final favoriteId =
+                              (track.trackId ?? track.uniqueId.hashCode)
+                                  .toString();
 
                           return NetworkTrackItem(
                             track: track,
                             isCurrentlyPlaying: isCurrentlyPlaying,
                             isPlaying: isCurrentlyPlaying && _model.isPlaying,
                             isDownloading: _model.isDownloading(trackId),
+                            isFavorite: _favoriteIds.contains(favoriteId),
                             onPlay: () => _playTrack(track),
                             onDownload: () => _downloadTrack(track),
+                            onToggleFavorite: () => _toggleFavorite(track),
+                            onLongPress: () => _openTrackDetails(track),
                           );
                         },
                       );
@@ -430,7 +590,8 @@ class _NetworkScreenState extends State<NetworkScreen> {
                           Expanded(
                             child: Slider(
                               value: _duration.inMilliseconds > 0
-                                  ? _position.inMilliseconds.toDouble()
+                                  ? (_position.inMilliseconds.toDouble())
+                                      .clamp(0.0, _duration.inMilliseconds.toDouble())
                                   : 0.0,
                               max: _duration.inMilliseconds > 0
                                   ? _duration.inMilliseconds.toDouble()

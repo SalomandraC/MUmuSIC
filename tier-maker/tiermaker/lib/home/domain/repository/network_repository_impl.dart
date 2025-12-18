@@ -21,13 +21,19 @@ class NetworkRepositoryImpl implements INetworkRepository {
       );
 
       return iTunesTracks.map((itunesTrack) {
+        // Парсим trackTime обратно в миллисекунды для NetworkTrack
+        final timeParts = itunesTrack.trackTime.split(':');
+        final minutes = int.tryParse(timeParts[0]) ?? 0;
+        final seconds = int.tryParse(timeParts[1]) ?? 0;
+        final trackTimeMillis = (minutes * 60 + seconds) * 1000;
+
         return NetworkTrack(
-          trackId: itunesTrack.trackId,
+          trackId: itunesTrack.id,
           trackName: itunesTrack.trackName,
           artistName: itunesTrack.artistName,
-          trackTimeMillis: itunesTrack.trackTimeMillis,
+          trackTimeMillis: trackTimeMillis,
           previewUrl: itunesTrack.previewUrl,
-          artworkUrl100: itunesTrack.artworkUrl100,
+          artworkUrl100: itunesTrack.image,
         );
       }).toList();
     } catch (e) {
@@ -58,7 +64,8 @@ class NetworkRepositoryImpl implements INetworkRepository {
 
       // Получаем директорию для сохранения
       final directory = await _getDownloadDirectory();
-      final fileName = _sanitizeFileName('${track.artistName} - ${track.trackName}.m4a');
+      final fileName =
+          _sanitizeFileName('${track.artistName} - ${track.trackName}.m4a');
       final filePath = '${directory.path}/$fileName';
 
       // Проверяем, существует ли файл
@@ -134,4 +141,3 @@ class NetworkRepositoryImpl implements INetworkRepository {
         .trim();
   }
 }
-

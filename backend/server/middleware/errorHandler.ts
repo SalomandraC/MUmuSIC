@@ -39,6 +39,12 @@ export const errorHandler = (
 };
 
 export const notFoundHandler = (req: Request, res: Response) => {
+  console.error(`\n[404] Route not found: ${req.method} ${req.path}`);
+  console.error(`  Original URL: ${req.originalUrl}`);
+  console.error(`  Base URL: ${req.baseUrl}`);
+  console.error(`  Content-Type: ${req.headers['content-type']}`);
+  console.error(`  Authorization: ${req.headers.authorization ? 'present' : 'missing'}`);
+  console.error(`  Registered routes should include: POST /tracks`);
   res.status(404).json({
     error: `Маршрут ${req.method} ${req.path} не найден`,
   });

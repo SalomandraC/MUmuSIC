@@ -9,6 +9,9 @@ class AppDatabase {
   static const String _userEmailKey = 'userEmail';
   static const String _userNicknameKey = 'userNickname';
   static const String _apiBaseUrlKey = 'apiBaseUrl';
+  static const String _accessTokenKey = 'accessToken';
+  static const String _refreshTokenKey = 'refreshToken';
+  static const String _userIdKey = 'userId';
   static Box<String>? _box;
 
   /// Проверяет и открывает box, если он еще не открыт
@@ -92,6 +95,49 @@ class AppDatabase {
       await box.put(_apiBaseUrlKey, cleanUrl);
     } else {
       await box.delete(_apiBaseUrlKey);
+    }
+  }
+
+  static Future<String?> getAccessToken() async {
+    final box = await _ensureBox();
+    return box.get(_accessTokenKey);
+  }
+
+  static Future<void> setAccessToken(String? token) async {
+    final box = await _ensureBox();
+    if (token != null) {
+      await box.put(_accessTokenKey, token);
+    } else {
+      await box.delete(_accessTokenKey);
+    }
+  }
+
+  static Future<String?> getRefreshToken() async {
+    final box = await _ensureBox();
+    return box.get(_refreshTokenKey);
+  }
+
+  static Future<void> setRefreshToken(String? token) async {
+    final box = await _ensureBox();
+    if (token != null) {
+      await box.put(_refreshTokenKey, token);
+    } else {
+      await box.delete(_refreshTokenKey);
+    }
+  }
+
+  static Future<int?> getUserId() async {
+    final box = await _ensureBox();
+    final value = box.get(_userIdKey);
+    return value != null ? int.tryParse(value) : null;
+  }
+
+  static Future<void> setUserId(int? userId) async {
+    final box = await _ensureBox();
+    if (userId != null) {
+      await box.put(_userIdKey, userId.toString());
+    } else {
+      await box.delete(_userIdKey);
     }
   }
 

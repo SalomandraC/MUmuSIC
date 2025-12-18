@@ -32,6 +32,10 @@ class AppModel extends ChangeNotifier {
   String? get userEmail => _userEmail;
   String? get userNickname => _userNickname;
 
+  Future<String?> getAccessToken() async {
+    return await AppDatabase.getAccessToken();
+  }
+
   Future<void> init() async {
     isLoading = true;
     notifyListeners();
@@ -45,6 +49,13 @@ class AppModel extends ChangeNotifier {
     _isGuest = await AppDatabase.getIsGuest();
     _userEmail = await AppDatabase.getUserEmail();
     _userNickname = await AppDatabase.getUserNickname();
+    
+    // Если есть токен, значит пользователь авторизован
+    final accessToken = await AppDatabase.getAccessToken();
+    if (accessToken != null && accessToken.isNotEmpty) {
+      _isGuest = false;
+    }
+    
     notifyListeners();
   }
 
@@ -70,6 +81,38 @@ class AppModel extends ChangeNotifier {
     await AppDatabase.setIsGuest(false);
     await AppDatabase.setUserEmail(email);
     await AppDatabase.setUserNickname(nickname);
+    notifyListeners();
+  }
+
+  Future<void> setAuthData({
+    required String email,
+    required String username,
+    required String accessToken,
+    required String refreshToken,
+    required int userId,
+  }) async {
+    _isGuest = false;
+    _userEmail = email;
+    _userNickname = username;
+    await AppDatabase.setIsGuest(false);
+    await AppDatabase.setUserEmail(email);
+    await AppDatabase.setUserNickname(username);
+    await AppDatabase.setAccessToken(accessToken);
+    await AppDatabase.setRefreshToken(refreshToken);
+    await AppDatabase.setUserId(userId);
+    notifyListeners();
+  }
+
+  Future<void> clearAuthData() async {
+    _isGuest = true;
+    _userEmail = null;
+    _userNickname = null;
+    await AppDatabase.setIsGuest(true);
+    await AppDatabase.setUserEmail(null);
+    await AppDatabase.setUserNickname(null);
+    await AppDatabase.setAccessToken(null);
+    await AppDatabase.setRefreshToken(null);
+    await AppDatabase.setUserId(null);
     notifyListeners();
   }
 

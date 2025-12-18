@@ -6,8 +6,11 @@ class NetworkTrackItem extends StatelessWidget {
   final bool isCurrentlyPlaying;
   final bool isPlaying;
   final bool isDownloading;
+  final bool isFavorite;
   final VoidCallback onPlay;
   final VoidCallback onDownload;
+  final VoidCallback onToggleFavorite;
+  final VoidCallback? onLongPress;
 
   const NetworkTrackItem({
     super.key,
@@ -15,8 +18,11 @@ class NetworkTrackItem extends StatelessWidget {
     required this.isCurrentlyPlaying,
     required this.isPlaying,
     required this.isDownloading,
+    required this.isFavorite,
     required this.onPlay,
     required this.onDownload,
+    required this.onToggleFavorite,
+    this.onLongPress,
   });
 
   @override
@@ -93,7 +99,8 @@ class NetworkTrackItem extends StatelessWidget {
         title: Text(
           track.trackName,
           style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: isCurrentlyPlaying ? FontWeight.bold : FontWeight.normal,
+            fontWeight:
+                isCurrentlyPlaying ? FontWeight.bold : FontWeight.normal,
             color: isCurrentlyPlaying ? theme.colorScheme.primary : null,
           ),
           maxLines: 1,
@@ -118,25 +125,7 @@ class NetworkTrackItem extends StatelessWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-                if (track.previewUrl != null) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'Превью',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ),
-                ],
+                const SizedBox(width: 4),
               ],
             ),
           ],
@@ -151,6 +140,16 @@ class NetworkTrackItem extends StatelessWidget {
               ),
             const SizedBox(width: 8),
             IconButton(
+              icon: Icon(
+                isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: isFavorite ? Colors.red : null,
+              ),
+              onPressed: onToggleFavorite,
+              tooltip:
+                  isFavorite ? 'Удалить из избранного' : 'Добавить в избранное',
+            ),
+            const SizedBox(width: 4),
+            IconButton(
               icon: isDownloading
                   ? const SizedBox(
                       width: 20,
@@ -164,9 +163,9 @@ class NetworkTrackItem extends StatelessWidget {
           ],
         ),
         onTap: onPlay,
+        onLongPress: onLongPress,
         enableFeedback: false,
       ),
     );
   }
 }
-
