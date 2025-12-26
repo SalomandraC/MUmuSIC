@@ -3,7 +3,6 @@ import { UserPlaylist } from './sync.types';
 
 export class SyncRepository {
   static async getPlaylists(userId: number): Promise<UserPlaylist[]> {
-    // Получаем плейлисты типа 'sync' (синхронизированные из iTunes)
     const playlists = await sql`
       SELECT id, name, description, created_at
       FROM playlists
@@ -14,7 +13,6 @@ export class SyncRepository {
     const result: UserPlaylist[] = [];
 
     for (const playlist of playlists) {
-      // Получаем треки из playlist_tracks и связанные данные из tracks
       const playlistTracks = await sql`
         SELECT pt.track_id, pt.position, t.title, t.artist, t.duration, t.notes
         FROM playlist_tracks pt
@@ -27,9 +25,8 @@ export class SyncRepository {
         id: playlist.id,
         name: playlist.name,
         description: playlist.description || undefined,
-        coverImageUri: undefined, // В существующей БД нет поля для обложки
+        coverImageUri: undefined, 
         tracks: playlistTracks.map((pt, idx) => {
-          // Парсим iTunes метаданные из notes, если они есть
           let trackId: number | undefined;
           let trackName: string | undefined = pt.title || undefined;
           let artistName: string | undefined = pt.artist || undefined;
@@ -37,7 +34,6 @@ export class SyncRepository {
           let previewUrl: string | undefined;
 
           if (pt.notes) {
-            // Формат notes: "Из iTunes (trackId: 123) | Preview: https://..."
             const trackIdMatch = pt.notes.match(/trackId:\s*(\d+)/);
             if (trackIdMatch) {
               trackId = parseInt(trackIdMatch[1]);
@@ -59,7 +55,7 @@ export class SyncRepository {
           };
         }),
         createdAt: playlist.created_at,
-        updatedAt: playlist.created_at, // В существующей БД нет updated_at для playlists
+        updatedAt: playlist.created_at, 
       });
     }
 
@@ -68,7 +64,6 @@ export class SyncRepository {
 
   static async savePlaylists(userId: number, playlists: UserPlaylist[]): Promise<void> {
     await sql.begin(async sql => {
-      // Удаляем существующие синхронизированные плейлисты
       const existingPlaylists = await sql`
         SELECT id FROM playlists WHERE user_id = ${userId} AND playlist_type = 'sync'
       `;
@@ -78,7 +73,6 @@ export class SyncRepository {
         await sql`DELETE FROM playlists WHERE id = ${existing.id}`;
       }
 
-      // Создаем новые плейлисты
       for (const playlist of playlists) {
         const [saved] = await sql`
           INSERT INTO playlists (user_id, name, description, playlist_type, nfc_uid, is_public)
@@ -86,15 +80,15 @@ export class SyncRepository {
           RETURNING id
         `;
 
-        // Сохраняем треки в плейлист
+        // Отслеживаем уже вставленные треки в этом плейлисте, чтобы избежать дубликатов
+        const insertedTracks = new Set<number>();
+
         for (let i = 0; i < playlist.tracks.length; i++) {
           const track = playlist.tracks[i];
-          
-          // Ищем существующий трек по title и artist
+
           let trackRecordId: number | null = null;
 
           if (track.trackName && track.artistName) {
-            // Ищем трек по названию и исполнителю (любой формат)
             const existingTrack = await sql`
               SELECT id FROM tracks 
               WHERE user_id = ${userId} 
@@ -108,7 +102,6 @@ export class SyncRepository {
             }
           }
 
-          // Если трек не найден, создаем новый трек в таблице tracks
           if (!trackRecordId && track.trackName) {
             const dummyPath = `playlists/${userId}/${Date.now()}_${(track.trackName || `Track${track.trackId}`).replace(/[^a-zA-Z0-9._ -]/g, '_')}.meta`;
             const notes = track.previewUrl 
@@ -134,14 +127,15 @@ export class SyncRepository {
               RETURNING id
             `;
             trackRecordId = newTrack.id;
-            console.log(`[SyncRepository] Created track from playlist: ${track.trackName} by ${track.artistName}`);
           }
 
-          // Добавляем трек в плейлист
-          if (trackRecordId) {
+          if (trackRecordId && !insertedTracks.has(trackRecordId)) {
+            insertedTracks.add(trackRecordId);
             await sql`
               INSERT INTO playlist_tracks (playlist_id, track_id, position)
               VALUES (${saved.id}, ${trackRecordId}, ${i})
+              ON CONFLICT (playlist_id, track_id) 
+              DO UPDATE SET position = EXCLUDED.position
             `;
           }
         }

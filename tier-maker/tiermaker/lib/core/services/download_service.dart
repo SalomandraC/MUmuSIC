@@ -15,36 +15,49 @@ class DownloadService {
 
   static Future<Map<String, dynamic>> downloadTracks() async {
     try {
-      debugPrint('[DownloadService] Начало загрузки треков с сервера...');
+      debugPrint(
+          '[DownloadService] ========== Начало загрузки треков с сервера ==========');
       final result = await TracksApi.getUserTracks();
 
       debugPrint(
-          '[DownloadService] Результат API: success=${result['success']}, error=${result['error']}');
+          '[DownloadService] Результат API: success=${result['success']}, error=${result['error']}, statusCode=${result['statusCode']}');
 
       if (result['success'] != true) {
+        final error = result['error'] as String? ?? 'Неизвестная ошибка';
+        final statusCode = result['statusCode'] as int?;
         debugPrint(
-            '[DownloadService] Ошибка получения треков: ${result['error']}');
+            '[DownloadService] ❌ Ошибка получения треков: $error (код: $statusCode)');
         return result;
       }
 
       final data = result['data'] as Map<String, dynamic>?;
       if (data == null) {
-        debugPrint('[DownloadService] Данные отсутствуют в ответе');
+        debugPrint('[DownloadService] ❌ Данные отсутствуют в ответе');
+        debugPrint('[DownloadService] Полный результат: $result');
         return {
           'success': false,
           'error': 'Данные отсутствуют в ответе сервера'
         };
       }
 
-      debugPrint('[DownloadService] Данные получены: ${data.keys}');
+      debugPrint('[DownloadService] ✅ Данные получены: keys=${data.keys}');
       final tracksJson = data['tracks'] as List<dynamic>?;
 
-      if (tracksJson == null || tracksJson.isEmpty) {
-        debugPrint('[DownloadService] Треки отсутствуют на сервере');
+      if (tracksJson == null) {
+        debugPrint('[DownloadService] ⚠️ Поле tracks отсутствует в ответе');
+        debugPrint('[DownloadService] Структура данных: $data');
+        return {
+          'success': false,
+          'error': 'Некорректный формат ответа сервера: поле tracks отсутствует'
+        };
+      }
+
+      if (tracksJson.isEmpty) {
+        debugPrint('[DownloadService] ℹ️ Треки отсутствуют на сервере');
         return {'success': true, 'message': 'Нет треков на сервере'};
       }
 
-      debugPrint('[DownloadService] Получено треков: ${tracksJson.length}');
+      debugPrint('[DownloadService] ✅ Получено треков: ${tracksJson.length}');
 
       // Преобразуем треки в TrackDto
       final tracks = <TrackDto>[];
@@ -94,46 +107,37 @@ class DownloadService {
           try {
             await _downloadTrackFile(track);
             downloadedCount++;
-            debugPrint('[DownloadService] Скачан трек: ${track.trackName}');
+            debugPrint(
+                '[DownloadService] ✅ Скачан трек: ${track.trackName ?? "Unknown"}');
           } catch (e) {
             failedCount++;
             debugPrint(
-                '[DownloadService] Ошибка скачивания трека ${track.trackName}: $e');
+                '[DownloadService] ❌ Ошибка скачивания трека ${track.trackName ?? "Unknown"}: $e');
           }
+        } else {
+          debugPrint(
+              '[DownloadService] ⚠️ Пропущен трек ${track.trackName ?? "Unknown"}: отсутствует URL');
         }
       }
 
       debugPrint(
-          '[DownloadService] Скачано файлов: $downloadedCount, ошибок: $failedCount');
+          '[DownloadService] ✅ Скачано файлов: $downloadedCount, ошибок: $failedCount');
 
-      // Получаем существующие избранные треки
-      debugPrint('[DownloadService] Загрузка существующих избранных треков...');
-      final existingFavorites = await _localStorage.getFavorites();
+      // Треки скачиваются как файлы и будут отображаться во внутреннем хранилище
+      // Не сохраняем в избранное - файлы доступны через DownloadedTracksRepository
+
+      final skippedCount = tracks.length - downloadedCount - failedCount;
       debugPrint(
-          '[DownloadService] Существующих избранных: ${existingFavorites.length}');
-
-      // Объединяем треки, избегая дубликатов (по trackId)
-      final existingTrackIds = existingFavorites.map((t) => t.trackId).toSet();
-      final newTracks =
-          tracks.where((t) => !existingTrackIds.contains(t.trackId)).toList();
-      debugPrint('[DownloadService] Новых треков: ${newTracks.length}');
-
-      // Сохраняем все треки (существующие + новые) в избранное
-      final allTracks = [...existingFavorites, ...newTracks];
-      debugPrint(
-          '[DownloadService] Сохранение ${allTracks.length} треков в избранное...');
-      await _localStorage.saveFavorites(allTracks);
-      debugPrint('[DownloadService] Треки успешно сохранены в избранное');
-
-      debugPrint(
-          '[DownloadService] Итого загружено треков: ${tracks.length} (новых: ${newTracks.length})');
+          '[DownloadService] 📊 Итого: обработано ${tracks.length}, скачано $downloadedCount, пропущено $skippedCount, ошибок $failedCount');
 
       return {
         'success': true,
         'message':
-            'Загружено треков: ${tracks.length} (новых: ${newTracks.length})',
+            'Скачано треков: $downloadedCount из ${tracks.length}${failedCount > 0 ? ' (ошибок: $failedCount)' : ''}',
         'count': tracks.length,
-        'newCount': newTracks.length,
+        'downloadedCount': downloadedCount,
+        'failedCount': failedCount,
+        'skippedCount': skippedCount,
       };
     } catch (e) {
       debugPrint('[DownloadService] Ошибка загрузки треков: $e');
@@ -223,18 +227,40 @@ class DownloadService {
     // Получаем директорию для сохранения
     final directory = await _getDownloadDirectory();
 
-    // Формируем имя файла
+    // Формируем имя файла в формате "Artist - Track Name.ext"
+    // Это соответствует формату, который ожидает DownloadedTracksRepositoryImpl
     final sanitizedTitle =
         _sanitizeFileName(track.trackName ?? 'Unknown Track');
     final sanitizedArtist =
         _sanitizeFileName(track.artistName ?? 'Unknown Artist');
-    final fileName = '$sanitizedArtist - $sanitizedTitle.m4a';
+
+    // Определяем расширение файла из URL или используем m4a по умолчанию
+    String extension = 'm4a';
+    if (track.previewUrl != null) {
+      final urlLower = track.previewUrl!.toLowerCase();
+      if (urlLower.contains('.mp3')) {
+        extension = 'mp3';
+      } else if (urlLower.contains('.m4a')) {
+        extension = 'm4a';
+      } else if (urlLower.contains('.mp4')) {
+        extension = 'mp4';
+      } else if (urlLower.contains('.wav')) {
+        extension = 'wav';
+      } else if (urlLower.contains('.flac')) {
+        extension = 'flac';
+      }
+    }
+
+    final fileName = '$sanitizedArtist - $sanitizedTitle.$extension';
     final filePath = '${directory.path}/$fileName';
+
+    debugPrint('[DownloadService] 📥 Скачивание в: $filePath');
 
     // Проверяем, существует ли файл
     final file = File(filePath);
     if (await file.exists()) {
-      debugPrint('[DownloadService] Файл уже существует: $filePath');
+      debugPrint(
+          '[DownloadService] ⏭️ Файл уже существует, пропуск: $filePath');
       return;
     }
 
@@ -263,13 +289,51 @@ class DownloadService {
   }
 
   /// Получение директории для скачивания
+  /// Использует ту же логику, что и DownloadedTracksRepositoryImpl
   static Future<Directory> _getDownloadDirectory() async {
     if (Platform.isAndroid) {
-      final directory = Directory('/storage/emulated/0/Download/MuMuSIC');
-      if (!await directory.exists()) {
-        await directory.create(recursive: true);
+      try {
+        // Пытаемся использовать стандартную директорию Downloads
+        final directory = await getExternalStorageDirectory();
+        if (directory != null) {
+          // Используем поддиректорию Downloads в приложении
+          final downloadDir = Directory('${directory.path}/Downloads/MuMuSIC');
+          if (!await downloadDir.exists()) {
+            await downloadDir.create(recursive: true);
+          }
+          debugPrint(
+              '[DownloadService] ✅ Используется путь: ${downloadDir.path}');
+          return downloadDir;
+        }
+      } catch (e) {
+        debugPrint(
+            '[DownloadService] ⚠️ Ошибка получения стандартной директории: $e');
       }
-      return directory;
+
+      // Fallback: пытаемся использовать старый путь
+      try {
+        final directory = Directory('/storage/emulated/0/Download/MuMuSIC');
+        if (await directory.exists() || await _canCreateDirectory(directory)) {
+          if (!await directory.exists()) {
+            await directory.create(recursive: true);
+          }
+          debugPrint(
+              '[DownloadService] ✅ Используется fallback путь: ${directory.path}');
+          return directory;
+        }
+      } catch (e) {
+        debugPrint('[DownloadService] ⚠️ Ошибка fallback пути: $e');
+      }
+
+      // Последний fallback: используем директорию приложения
+      final directory = await getApplicationDocumentsDirectory();
+      final downloadDir = Directory('${directory.path}/Downloads/MuMuSIC');
+      if (!await downloadDir.exists()) {
+        await downloadDir.create(recursive: true);
+      }
+      debugPrint(
+          '[DownloadService] ✅ Используется директория приложения: ${downloadDir.path}');
+      return downloadDir;
     } else if (Platform.isIOS) {
       final directory = await getApplicationDocumentsDirectory();
       final downloadDir = Directory('${directory.path}/Downloads');
@@ -284,6 +348,16 @@ class DownloadService {
         await downloadDir.create(recursive: true);
       }
       return downloadDir;
+    }
+  }
+
+  /// Проверка возможности создания директории
+  static Future<bool> _canCreateDirectory(Directory directory) async {
+    try {
+      await directory.create(recursive: true);
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 

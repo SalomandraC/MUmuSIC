@@ -16,13 +16,16 @@ class AppModel extends ChangeNotifier {
   String get appState => _appState;
 
   // Геттер для кода темы (первые 2 символа: lt/dr)
-  String get themeCode => _appState.length >= 2 ? _appState.substring(0, 2) : 'lt';
+  String get themeCode =>
+      _appState.length >= 2 ? _appState.substring(0, 2) : 'lt';
 
   // Геттер для кода языка (символы 3-4: ru/en и т.д.)
-  String get languageCode => _appState.length >= 4 ? _appState.substring(2, 4) : 'ru';
+  String get languageCode =>
+      _appState.length >= 4 ? _appState.substring(2, 4) : 'ru';
 
   // Геттер для дополнительных данных (остальные символы)
-  String get additionalData => _appState.length > 4 ? _appState.substring(4) : '000000';
+  String get additionalData =>
+      _appState.length > 4 ? _appState.substring(4) : '000000';
 
   // Геттер для проверки темной темы
   bool get isDarkTheme => themeCode == 'dr';
@@ -49,13 +52,12 @@ class AppModel extends ChangeNotifier {
     _isGuest = await AppDatabase.getIsGuest();
     _userEmail = await AppDatabase.getUserEmail();
     _userNickname = await AppDatabase.getUserNickname();
-    
-    // Если есть токен, значит пользователь авторизован
+
     final accessToken = await AppDatabase.getAccessToken();
     if (accessToken != null && accessToken.isNotEmpty) {
       _isGuest = false;
     }
-    
+
     notifyListeners();
   }
 
@@ -141,7 +143,8 @@ class AppModel extends ChangeNotifier {
   Future<void> setLanguage(String languageCode) async {
     // languageCode должен быть 'ru', 'en' и т.д.
     if (languageCode.length == 2 && _appState.length >= 4) {
-      _appState = _appState.substring(0, 2) + languageCode + _appState.substring(4);
+      _appState =
+          _appState.substring(0, 2) + languageCode + _appState.substring(4);
       await AppDatabase.setAppTheme(_appState);
       notifyListeners();
     }

@@ -33,6 +33,11 @@ export class TracksService {
     
     if (!track) return null;
     
+    // Не возвращаем метаданные из плейлистов
+    if (track.file_format === 'metadata') {
+      return null;
+    }
+    
     if (userId && track.user_id !== userId && !track.is_public) {
       return null;
     }
@@ -48,13 +53,10 @@ export class TracksService {
 
     const deleted = await TracksRepository.delete(id, userId);
     if (deleted && track.file_path) {
-      // file_path уже содержит 'users/{userId}/{filename}'
       const filePath = path.join(appConfig.storageRoot, track.file_path);
       try {
         await fs.promises.unlink(filePath);
-        console.log(`[TracksService] File deleted: ${filePath}`);
       } catch (error) {
-        console.error(`[TracksService] Failed to delete file ${filePath}:`, error);
       }
     }
 
@@ -62,13 +64,8 @@ export class TracksService {
   }
 
   private static mapToResponse(track: any): TrackResponse {
-    // Формируем URL для доступа к файлу через /storage/users/{userId}/{filename}
-    // file_path может содержать 'users\{userId}\{filename}' (Windows) или 'users/{userId}/{filename}'
-    // Нормализуем путь: заменяем обратные слеши на прямые
     const normalizedPath = track.file_path.replace(/\\/g, '/');
     const fileUrl = `/storage/${normalizedPath}`;
-    
-    console.log(`[TracksService] mapToResponse: file_path=${track.file_path}, normalized=${normalizedPath}, fileUrl=${fileUrl}`);
     
     return {
       id: track.id,
@@ -82,7 +79,6 @@ export class TracksService {
       file_size: track.file_size,
       notes: track.notes,
       is_public: track.is_public,
-      play_count: track.play_count,
       created_at: track.created_at.toISOString(),
     };
   }

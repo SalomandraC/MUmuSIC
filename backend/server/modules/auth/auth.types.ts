@@ -21,20 +21,6 @@ export interface UserSafe {
   updatedAt: Date;
 }
 
-export interface GuestSessionRecord {
-  session_id: string;
-  last_activity: Date;
-  access_count: number;
-  created_at: Date;
-}
-
-export interface GuestSessionSafe {
-  sessionId: string;
-  lastActivity: Date;
-  accessCount: number;
-  createdAt: Date;
-}
-
 export interface RegisterInput {
   username: string;
   email: string;
@@ -44,25 +30,6 @@ export interface RegisterInput {
 export interface LoginInput {
   email: string;
   password: string;
-}
-
-export interface ChangePasswordInput {
-  currentPassword: string;
-  newPassword: string;
-  userId: number;
-}
-
-export interface ResetPasswordRequestInput {
-  email: string;
-}
-
-export interface ResetPasswordConfirmInput {
-  token: string;
-  newPassword: string;
-}
-
-export interface GuestSessionValidateInput {
-  sessionId: string;
 }
 
 export interface AuthTokens {

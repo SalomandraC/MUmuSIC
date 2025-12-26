@@ -15,12 +15,6 @@ const mapUser = (record) => ({
     created_at: record.created_at,
     updated_at: record.updated_at,
 });
-const mapGuestSession = (record) => ({
-    session_id: record.session_id,
-    last_activity: record.last_activity,
-    access_count: record.access_count,
-    created_at: record.created_at,
-});
 class AuthRepository {
     static async findUserByEmail(email) {
         const result = await (0, db_1.default) `
@@ -62,55 +56,6 @@ class AuthRepository {
       RETURNING *
     `;
         return mapUser(result[0]);
-    }
-    static async updateUserPassword(userId, passwordHash) {
-        const result = await (0, db_1.default) `
-      UPDATE users
-      SET password_hash = ${passwordHash}, updated_at = NOW()
-      WHERE id = ${userId}
-      RETURNING *
-    `;
-        if (result.length === 0) {
-            throw new Error('User not found');
-        }
-        return mapUser(result[0]);
-    }
-    static async createGuestSession(sessionId) {
-        const result = await (0, db_1.default) `
-      INSERT INTO guest_sessions (session_id)
-      VALUES (${sessionId})
-      RETURNING *
-    `;
-        return mapGuestSession(result[0]);
-    }
-    static async findGuestSession(sessionId) {
-        const result = await (0, db_1.default) `
-      SELECT *
-      FROM guest_sessions
-      WHERE session_id = ${sessionId}
-      LIMIT 1
-    `;
-        if (result.length === 0)
-            return null;
-        return mapGuestSession(result[0]);
-    }
-    static async touchGuestSession(sessionId) {
-        const result = await (0, db_1.default) `
-      UPDATE guest_sessions
-      SET last_activity = NOW(), access_count = access_count + 1
-      WHERE session_id = ${sessionId}
-      RETURNING *
-    `;
-        if (result.length === 0) {
-            throw new Error('Guest session not found');
-        }
-        return mapGuestSession(result[0]);
-    }
-    static async deleteGuestSession(sessionId) {
-        await (0, db_1.default) `
-      DELETE FROM guest_sessions
-      WHERE session_id = ${sessionId}
-    `;
     }
 }
 exports.AuthRepository = AuthRepository;

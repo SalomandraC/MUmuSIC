@@ -9,13 +9,13 @@ export interface PlaylistTrack {
 }
 
 export interface UserPlaylist {
-  id?: number; // Опционально при загрузке, генерируется на сервере
+  id?: number;
   name: string;
   description?: string;
   coverImageUri?: string | null;
   tracks: PlaylistTrack[];
-  createdAt?: Date; // Опционально при загрузке, генерируется на сервере
-  updatedAt?: Date; // Опционально при загрузке, генерируется на сервере
+  createdAt?: Date; 
+  updatedAt?: Date; 
 }
 
 export interface SyncData {

@@ -535,15 +535,9 @@ class _NfcScreenState extends State<NfcScreen> {
     } catch (e, stackTrace) {
       debugPrint('❌ [NfcScreen] Критическая ошибка чтения NFC метки: $e');
       debugPrint('❌ [NfcScreen] Stack trace: $stackTrace');
-
-      // Пробуем остановить сессию в случае ошибки
       try {
         await FlutterNfcKit.finish();
-      } catch (_) {
-        // Игнорируем ошибки при остановке
-      }
-
-      // НЕ закрываем экран, просто показываем ошибку
+      } catch (_) {}
       if (mounted) {
         setState(() {
           _isListening = false;

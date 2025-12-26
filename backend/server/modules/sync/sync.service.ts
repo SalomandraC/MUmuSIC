@@ -10,12 +10,10 @@ export class SyncService {
   }
 
   static async saveUserData(userId: number, data: SyncData): Promise<void> {
-    // Сохраняем плейлисты (треки создаются внутри репозитория)
     await SyncRepository.savePlaylists(userId, data.playlists);
   }
 
   static async savePlaylists(userId: number, playlists: UserPlaylist[]): Promise<void> {
-    // Сохраняем плейлисты (треки создаются внутри репозитория)
     await SyncRepository.savePlaylists(userId, playlists);
   }
 }

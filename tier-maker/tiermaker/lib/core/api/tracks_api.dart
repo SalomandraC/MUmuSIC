@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -106,8 +107,19 @@ class TracksApi {
       final baseUrl = await getBaseUrl();
       final url = '$baseUrl/tracks';
       final headers = await _getHeaders();
+      final token = await getAccessToken();
 
       debugPrint('[TracksApi] Получение треков: $url');
+      debugPrint('[TracksApi] Токен присутствует: ${token != null}');
+
+      if (token == null) {
+        debugPrint('[TracksApi] Ошибка: Токен авторизации отсутствует');
+        return {
+          'success': false,
+          'error': 'Необходима авторизация. Пожалуйста, войдите в систему.',
+          'statusCode': 401,
+        };
+      }
 
       final response = await http
           .get(
@@ -121,23 +133,76 @@ class TracksApi {
           '[TracksApi] Тело ответа (первые 500 символов): ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body) as Map<String, dynamic>;
+        try {
+          final data = json.decode(response.body) as Map<String, dynamic>;
+          final tracksCount = (data['tracks'] as List?)?.length ?? 0;
+          debugPrint(
+              '[TracksApi] Данные получены: keys=${data.keys}, tracks count=$tracksCount');
+
+          if (tracksCount == 0) {
+            debugPrint('[TracksApi] Предупреждение: Список треков пуст');
+          }
+
+          return {'success': true, 'data': data};
+        } catch (e) {
+          debugPrint('[TracksApi] Ошибка парсинга JSON: $e');
+          debugPrint('[TracksApi] Тело ответа полностью: ${response.body}');
+          return {
+            'success': false,
+            'error': 'Ошибка обработки ответа сервера: $e',
+            'statusCode': response.statusCode,
+          };
+        }
+      } else if (response.statusCode == 401) {
         debugPrint(
-            '[TracksApi] Данные получены: keys=${data.keys}, tracks count=${(data['tracks'] as List?)?.length ?? 0}');
-        return {'success': true, 'data': data};
-      } else {
-        final errorData = json.decode(response.body) as Map<String, dynamic>?;
-        final errorMessage = errorData?['error'] as String? ??
-            'Ошибка получения треков: ${response.statusCode}';
-        debugPrint('[TracksApi] Ошибка: $errorMessage');
+            '[TracksApi] Ошибка авторизации: токен недействителен или истек');
         return {
           'success': false,
-          'error': errorMessage,
-          'statusCode': response.statusCode,
+          'error': 'Сессия истекла. Пожалуйста, войдите в систему заново.',
+          'statusCode': 401,
         };
+      } else if (response.statusCode == 403) {
+        debugPrint('[TracksApi] Ошибка доступа: недостаточно прав');
+        return {
+          'success': false,
+          'error': 'Недостаточно прав для доступа к трекам.',
+          'statusCode': 403,
+        };
+      } else {
+        try {
+          final errorData = json.decode(response.body) as Map<String, dynamic>?;
+          final errorMessage = errorData?['error'] as String? ??
+              errorData?['message'] as String? ??
+              'Ошибка получения треков: ${response.statusCode}';
+          debugPrint('[TracksApi] Ошибка: $errorMessage');
+          return {
+            'success': false,
+            'error': errorMessage,
+            'statusCode': response.statusCode,
+          };
+        } catch (e) {
+          debugPrint('[TracksApi] Ошибка парсинга ошибки: $e');
+          return {
+            'success': false,
+            'error': 'Ошибка сервера: ${response.statusCode}',
+            'statusCode': response.statusCode,
+          };
+        }
       }
+    } on http.ClientException catch (e) {
+      debugPrint('[TracksApi] Ошибка сети: $e');
+      return {
+        'success': false,
+        'error': 'Ошибка подключения к серверу. Проверьте интернет-соединение.',
+      };
+    } on TimeoutException catch (e) {
+      debugPrint('[TracksApi] Таймаут: $e');
+      return {
+        'success': false,
+        'error': 'Превышено время ожидания ответа от сервера.',
+      };
     } catch (e) {
-      debugPrint('[TracksApi] Ошибка получения треков: $e');
+      debugPrint('[TracksApi] Неожиданная ошибка получения треков: $e');
       return {'success': false, 'error': e.toString()};
     }
   }

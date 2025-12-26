@@ -31,23 +31,6 @@ const swaggerDefinition = {
             },
         },
         schemas: {
-            GuestTrack: {
-                type: 'object',
-                properties: {
-                    id: { type: 'integer' },
-                    title: { type: 'string' },
-                    artist: { type: 'string' },
-                    file_path: { type: 'string', example: '/storage/404Heart.mp3' },
-                    file_format: { type: 'string', example: 'mp3' },
-                    duration: { type: 'integer' },
-                    file_size: { type: 'integer' },
-                    is_active: { type: 'boolean' },
-                    play_count: { type: 'integer' },
-                    created_at: { type: 'string', format: 'date-time' },
-                    url: { type: 'string', example: 'http://localhost:5050/storage/404Heart.mp3' },
-                    streamUrl: { type: 'string', example: 'http://localhost:5050/guest-tracks/1/stream' },
-                },
-            },
             Track: {
                 type: 'object',
                 properties: {
@@ -108,30 +91,6 @@ const swaggerDefinition = {
                     refreshToken: { type: 'string' },
                 },
             },
-            ChangePasswordRequest: {
-                type: 'object',
-                required: ['currentPassword', 'newPassword'],
-                properties: {
-                    currentPassword: { type: 'string', format: 'password' },
-                    newPassword: { type: 'string', format: 'password' },
-                },
-            },
-            GuestSession: {
-                type: 'object',
-                properties: {
-                    sessionId: { type: 'string' },
-                    lastActivity: { type: 'string', format: 'date-time' },
-                    accessCount: { type: 'integer' },
-                    createdAt: { type: 'string', format: 'date-time' },
-                },
-            },
-            GuestSessionValidateRequest: {
-                type: 'object',
-                required: ['sessionId'],
-                properties: {
-                    sessionId: { type: 'string' },
-                },
-            },
             Error: {
                 type: 'object',
                 properties: {
@@ -144,6 +103,65 @@ const swaggerDefinition = {
                     user: { $ref: '#/components/schemas/User' },
                     tokens: { $ref: '#/components/schemas/AuthTokens' },
                 },
+            },
+            PlaylistTrack: {
+                type: 'object',
+                properties: {
+                    trackId: { type: 'integer', description: 'ID трека из iTunes' },
+                    trackName: { type: 'string', description: 'Название трека' },
+                    artistName: { type: 'string', description: 'Исполнитель' },
+                    trackTimeMillis: { type: 'integer', description: 'Длительность в миллисекундах' },
+                    artworkUrl100: { type: 'string', description: 'URL обложки' },
+                    previewUrl: { type: 'string', description: 'URL превью трека' },
+                    position: { type: 'integer', description: 'Позиция в плейлисте' },
+                },
+                required: ['trackId', 'position'],
+            },
+            UserPlaylist: {
+                type: 'object',
+                properties: {
+                    id: { type: 'integer', description: 'ID плейлиста (используется при синхронизации)' },
+                    name: { type: 'string', description: 'Название плейлиста' },
+                    description: { type: 'string', description: 'Описание плейлиста' },
+                    coverImageUri: { type: 'string', description: 'URI обложки плейлиста' },
+                    tracks: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/PlaylistTrack' },
+                        description: 'Список треков в плейлисте',
+                    },
+                    createdAt: { type: 'string', format: 'date-time', description: 'Дата создания' },
+                    updatedAt: { type: 'string', format: 'date-time', description: 'Дата обновления' },
+                },
+                required: ['id', 'name', 'tracks'],
+            },
+            SyncData: {
+                type: 'object',
+                properties: {
+                    playlists: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/UserPlaylist' },
+                        description: 'Список плейлистов пользователя',
+                    },
+                },
+                required: ['playlists'],
+            },
+            TrackResponse: {
+                type: 'object',
+                properties: {
+                    id: { type: 'integer', description: 'ID трека' },
+                    title: { type: 'string', description: 'Название трека' },
+                    artist: { type: 'string', description: 'Исполнитель' },
+                    album: { type: 'string', description: 'Альбом' },
+                    duration: { type: 'integer', description: 'Длительность в секундах' },
+                    file_path: { type: 'string', description: 'Относительный путь к файлу на сервере' },
+                    file_url: { type: 'string', description: 'URL для доступа к файлу' },
+                    file_format: { type: 'string', description: 'Формат файла (mp3, wav и т.д.)' },
+                    file_size: { type: 'integer', description: 'Размер файла в байтах' },
+                    notes: { type: 'string', description: 'Заметки' },
+                    is_public: { type: 'boolean', description: 'Публичный доступ' },
+                    created_at: { type: 'string', format: 'date-time', description: 'Дата создания' },
+                },
+                required: ['id', 'title', 'file_path', 'file_url', 'file_format', 'is_public', 'created_at'],
             },
         },
     },

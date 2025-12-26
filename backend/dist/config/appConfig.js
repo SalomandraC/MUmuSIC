@@ -18,11 +18,8 @@ const envSchema = zod_1.z.object({
     SUPABASE_SERVICE_ROLE_KEY: zod_1.z.string().optional(),
     JWT_ACCESS_SECRET: zod_1.z.string().min(16).default('change-me-access-secret'),
     JWT_REFRESH_SECRET: zod_1.z.string().min(16).default('change-me-refresh-secret'),
-    PASSWORD_RESET_SECRET: zod_1.z.string().min(16).default('change-me-reset-secret'),
-    ACCESS_TOKEN_TTL: zod_1.z.union([zod_1.z.string(), zod_1.z.number()]).default('15m'),
+    ACCESS_TOKEN_TTL: zod_1.z.union([zod_1.z.string(), zod_1.z.number()]).default('60m'),
     REFRESH_TOKEN_TTL: zod_1.z.union([zod_1.z.string(), zod_1.z.number()]).default('7d'),
-    PASSWORD_RESET_TOKEN_TTL: zod_1.z.union([zod_1.z.string(), zod_1.z.number()]).default('1h'),
-    GUEST_SESSION_TTL_MINUTES: zod_1.z.coerce.number().default(60 * 24),
     STORAGE_ROOT: zod_1.z.string().optional(),
 });
 const parsedEnv = envSchema.safeParse(process.env);
@@ -47,13 +44,6 @@ exports.appConfig = {
         refreshSecret: env.JWT_REFRESH_SECRET,
         accessTtl: env.ACCESS_TOKEN_TTL,
         refreshTtl: env.REFRESH_TOKEN_TTL,
-    },
-    passwordReset: {
-        secret: env.PASSWORD_RESET_SECRET,
-        ttl: env.PASSWORD_RESET_TOKEN_TTL,
-    },
-    guestSessions: {
-        ttlMinutes: env.GUEST_SESSION_TTL_MINUTES,
     },
     storageRoot: env.STORAGE_ROOT
         ? path_1.default.resolve(env.STORAGE_ROOT)

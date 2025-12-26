@@ -105,17 +105,14 @@ class NetworkRepositoryImpl implements INetworkRepository {
     return track.previewUrl;
   }
 
-  /// Получение директории для скачивания
   Future<Directory> _getDownloadDirectory() async {
     if (Platform.isAndroid) {
-      // Для Android используем внешнее хранилище
       final directory = Directory('/storage/emulated/0/Download/MuMuSIC');
       if (!await directory.exists()) {
         await directory.create(recursive: true);
       }
       return directory;
     } else if (Platform.isIOS) {
-      // Для iOS используем Documents
       final directory = await getApplicationDocumentsDirectory();
       final downloadDir = Directory('${directory.path}/Downloads');
       if (!await downloadDir.exists()) {

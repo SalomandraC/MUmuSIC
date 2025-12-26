@@ -25,22 +25,13 @@ export class TracksController {
   static upload = upload.single('file');
 
   static async create(req: AuthenticatedRequest, res: Response) {
-    console.log(`[TracksController] create called`);
-    console.log(`  Method: ${req.method}`);
-    console.log(`  Path: ${req.path}`);
-    console.log(`  User:`, req.user);
-    console.log(`  File:`, req.file ? { name: req.file.originalname, size: req.file.size } : 'null');
-    console.log(`  Body:`, req.body);
-    
     const userId = Number(req.user?.sub);
     if (!userId) {
-      console.log(`[TracksController] ❌ No userId`);
       return res.status(401).json({ error: 'Необходима аутентификация' });
     }
 
     const file = req.file;
     if (!file) {
-      console.log(`[TracksController] ❌ No file uploaded`);
       return res.status(400).json({ error: 'Файл не загружен' });
     }
 
@@ -107,6 +98,7 @@ export class TracksController {
     }
 
     const tracks = await TracksService.getUserTracks(userId);
+    console.log(`[TracksController] getUserTracks: returning ${tracks.length} tracks for user ${userId}`);
     res.json({ tracks });
   }
 

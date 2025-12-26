@@ -15,7 +15,7 @@ const playlistTrackSchema = z.object({
 });
 
 const playlistSchema = z.object({
-  id: z.number().optional(), // Опционально, так как может быть новым плейлистом
+  id: z.number().optional(),
   name: z.string(),
   description: z.string().optional(),
   coverImageUri: z.string().nullable().optional(),
@@ -64,12 +64,7 @@ export class SyncController {
     }
 
     try {
-      console.log('[SyncController] uploadPlaylists called');
-      console.log('  Body:', JSON.stringify(req.body, null, 2));
-      
       const parsed = z.array(playlistSchema).parse(req.body);
-      console.log('  Parsed playlists:', parsed.length);
-      
       const now = new Date();
       const playlists: UserPlaylist[] = parsed.map(p => ({
         ...p,

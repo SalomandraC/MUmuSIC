@@ -1,6 +1,5 @@
 import 'track.dart';
 
-/// Доменная сущность плейлиста
 class PlaylistEntity {
   final int id;
   final String name;
@@ -32,4 +31,3 @@ class PlaylistEntity {
     );
   }
 }
-

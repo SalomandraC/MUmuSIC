@@ -27,23 +27,6 @@ const swaggerDefinition: SwaggerDefinition = {
       },
     },
     schemas: {
-      GuestTrack: {
-        type: 'object',
-        properties: {
-          id: { type: 'integer' },
-          title: { type: 'string' },
-          artist: { type: 'string' },
-          file_path: { type: 'string', example: '/storage/404Heart.mp3' },
-          file_format: { type: 'string', example: 'mp3' },
-          duration: { type: 'integer' },
-          file_size: { type: 'integer' },
-          is_active: { type: 'boolean' },
-          play_count: { type: 'integer' },
-          created_at: { type: 'string', format: 'date-time' },
-          url: { type: 'string', example: 'http://localhost:5050/storage/404Heart.mp3' },
-          streamUrl: { type: 'string', example: 'http://localhost:5050/guest-tracks/1/stream' },
-        },
-      },
       Track: {
         type: 'object',
         properties: {
@@ -104,30 +87,6 @@ const swaggerDefinition: SwaggerDefinition = {
           refreshToken: { type: 'string' },
         },
       },
-      ChangePasswordRequest: {
-        type: 'object',
-        required: ['currentPassword', 'newPassword'],
-        properties: {
-          currentPassword: { type: 'string', format: 'password' },
-          newPassword: { type: 'string', format: 'password' },
-        },
-      },
-      GuestSession: {
-        type: 'object',
-        properties: {
-          sessionId: { type: 'string' },
-          lastActivity: { type: 'string', format: 'date-time' },
-          accessCount: { type: 'integer' },
-          createdAt: { type: 'string', format: 'date-time' },
-        },
-      },
-      GuestSessionValidateRequest: {
-        type: 'object',
-        required: ['sessionId'],
-        properties: {
-          sessionId: { type: 'string' },
-        },
-      },
       Error: {
         type: 'object',
         properties: {
@@ -180,7 +139,7 @@ const swaggerDefinition: SwaggerDefinition = {
             description: 'Список плейлистов пользователя',
           },
         },
-        required: ['favorites', 'playlists'],
+        required: ['playlists'],
       },
       TrackResponse: {
         type: 'object',
@@ -196,10 +155,9 @@ const swaggerDefinition: SwaggerDefinition = {
           file_size: { type: 'integer', description: 'Размер файла в байтах' },
           notes: { type: 'string', description: 'Заметки' },
           is_public: { type: 'boolean', description: 'Публичный доступ' },
-          play_count: { type: 'integer', description: 'Количество прослушиваний' },
           created_at: { type: 'string', format: 'date-time', description: 'Дата создания' },
         },
-        required: ['id', 'title', 'file_path', 'file_url', 'file_format', 'is_public', 'play_count', 'created_at'],
+        required: ['id', 'title', 'file_path', 'file_url', 'file_format', 'is_public', 'created_at'],
       },
     },
   },

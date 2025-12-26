@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyPasswordResetToken = exports.generatePasswordResetToken = exports.verifyRefreshToken = exports.verifyAccessToken = exports.generateRefreshToken = exports.generateAccessToken = void 0;
+exports.verifyRefreshToken = exports.verifyAccessToken = exports.generateRefreshToken = exports.generateAccessToken = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const appConfig_1 = require("../config/appConfig");
 const signToken = (payload, secret, expiresIn, type) => {
@@ -43,13 +43,3 @@ const verifyRefreshToken = (token) => {
     return decoded;
 };
 exports.verifyRefreshToken = verifyRefreshToken;
-const generatePasswordResetToken = (payload) => signToken(payload, appConfig_1.appConfig.passwordReset.secret, appConfig_1.appConfig.passwordReset.ttl, 'passwordReset');
-exports.generatePasswordResetToken = generatePasswordResetToken;
-const verifyPasswordResetToken = (token) => {
-    const decoded = verifyToken(token, appConfig_1.appConfig.passwordReset.secret);
-    if (decoded.type !== 'passwordReset') {
-        throw new Error('Invalid password reset token type');
-    }
-    return decoded;
-};
-exports.verifyPasswordResetToken = verifyPasswordResetToken;

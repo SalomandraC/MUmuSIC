@@ -2,7 +2,7 @@ import jwt, { JwtPayload, Secret, SignOptions } from 'jsonwebtoken';
 import { appConfig } from '../config/appConfig';
 import { UserRole } from '../modules/auth/auth.types';
 
-export type TokenType = 'access' | 'refresh' | 'passwordReset';
+export type TokenType = 'access' | 'refresh';
 
 export interface BaseTokenPayload {
   sub: number;
@@ -76,22 +76,6 @@ export const verifyRefreshToken = (token: string) => {
   const decoded = verifyToken(token, appConfig.jwt.refreshSecret);
   if (decoded.type !== 'refresh') {
     throw new Error('Invalid refresh token type');
-  }
-  return decoded;
-};
-
-export const generatePasswordResetToken = (payload: BaseTokenPayload) =>
-  signToken(
-    payload,
-    appConfig.passwordReset.secret,
-    appConfig.passwordReset.ttl as SignOptions['expiresIn'],
-    'passwordReset'
-  );
-
-export const verifyPasswordResetToken = (token: string) => {
-  const decoded = verifyToken(token, appConfig.passwordReset.secret);
-  if (decoded.type !== 'passwordReset') {
-    throw new Error('Invalid password reset token type');
   }
   return decoded;
 };

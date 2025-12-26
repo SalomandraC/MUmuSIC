@@ -10,7 +10,7 @@ export interface TrackRecord {
   file_size?: number;
   notes?: string;
   is_public: boolean;
-  play_count: number;
+  play_count?: number;
   created_at: Date;
 }
 
@@ -35,7 +35,6 @@ export interface TrackResponse {
   file_size?: number;
   notes?: string;
   is_public: boolean;
-  play_count: number;
   created_at: string;
 }
 

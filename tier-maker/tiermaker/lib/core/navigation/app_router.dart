@@ -27,7 +27,7 @@ class AppRouter {
         final model = AppModelProvider.of(context);
         final currentPath = state.uri.path;
         final isAuth = currentPath == AppRoutes.auth;
-        
+
         final guestAllowedPaths = [
           AppRoutes.home,
           AppRoutes.guestTracks,
@@ -41,10 +41,11 @@ class AppRouter {
           AppRoutes.storage,
           AppRoutes.topCharts,
         ];
-        
+
         // Проверяем пути с параметрами (например, /playlist-details/123)
-        final isPlaylistDetails = currentPath.startsWith(AppRoutes.playlistDetails);
-        
+        final isPlaylistDetails =
+            currentPath.startsWith(AppRoutes.playlistDetails);
+
         if (model.isGuest) {
           // Для гостя разрешаем доступ к плейлистам и их деталям
           if (isPlaylistDetails || guestAllowedPaths.contains(currentPath)) {
@@ -53,11 +54,11 @@ class AppRouter {
             return AppRoutes.home;
           }
         }
-        
+
         if (!model.isGuest && isAuth) {
           return AppRoutes.home;
         }
-        
+
         return null;
       },
       routes: [
@@ -140,8 +141,7 @@ class AppRouter {
     );
   }
 
-  // Для обратной совместимости
   static GoRouter get router => throw UnsupportedError(
-    'Use AppRouter.createRouter(appModel) instead',
-  );
+        'Use AppRouter.createRouter(appModel) instead',
+      );
 }

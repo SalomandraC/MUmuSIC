@@ -14,11 +14,8 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   JWT_ACCESS_SECRET: z.string().min(16).default('change-me-access-secret'),
   JWT_REFRESH_SECRET: z.string().min(16).default('change-me-refresh-secret'),
-  PASSWORD_RESET_SECRET: z.string().min(16).default('change-me-reset-secret'),
-  ACCESS_TOKEN_TTL: z.union([z.string(), z.number()]).default('15m'),
+  ACCESS_TOKEN_TTL: z.union([z.string(), z.number()]).default('60m'),
   REFRESH_TOKEN_TTL: z.union([z.string(), z.number()]).default('7d'),
-  PASSWORD_RESET_TOKEN_TTL: z.union([z.string(), z.number()]).default('1h'),
-  GUEST_SESSION_TTL_MINUTES: z.coerce.number().default(60 * 24),
   STORAGE_ROOT: z.string().optional(),
 });
 
@@ -47,13 +44,6 @@ export const appConfig = {
     refreshSecret: env.JWT_REFRESH_SECRET,
     accessTtl: env.ACCESS_TOKEN_TTL,
     refreshTtl: env.REFRESH_TOKEN_TTL,
-  },
-  passwordReset: {
-    secret: env.PASSWORD_RESET_SECRET,
-    ttl: env.PASSWORD_RESET_TOKEN_TTL,
-  },
-  guestSessions: {
-    ttlMinutes: env.GUEST_SESSION_TTL_MINUTES,
   },
   storageRoot: env.STORAGE_ROOT
     ? path.resolve(env.STORAGE_ROOT)
