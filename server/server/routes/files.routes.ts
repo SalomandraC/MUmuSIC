@@ -6,7 +6,6 @@ import mime from 'mime-types';
 
 const router = Router();
 
-// Minimal Multer file shape to avoid relying on global Express.Multer types
 interface UploadedFile {
 	fieldname: string;
 	originalname: string;
@@ -53,7 +52,6 @@ function resolveSafeFilePath(accountId: string, fileName: string): string {
 	return normalized;
 }
 
-// GET /:accountId/:fileName - serve track file
 router.get('/:accountId/:fileName', (req: Request, res: Response, next: NextFunction) => {
 	try {
 		const { accountId, fileName } = req.params;
@@ -71,7 +69,6 @@ router.get('/:accountId/:fileName', (req: Request, res: Response, next: NextFunc
 	}
 });
 
-// POST /files/:accountId - upload single track (field: file, optional body.name)
 router.post('/files/:accountId', upload.single('file'), async (req: Request & { file?: UploadedFile }, res: Response, next: NextFunction) => {
 	try {
 		const { accountId } = req.params;
@@ -117,7 +114,6 @@ router.post('/files/:accountId', upload.single('file'), async (req: Request & { 
 	}
 });
 
-// GET /files/:accountId - list files for account
 router.get('/files/:accountId', async (req: Request, res: Response, next: NextFunction) => {
 	try {
 		const { accountId } = req.params;
@@ -133,7 +129,6 @@ router.get('/files/:accountId', async (req: Request, res: Response, next: NextFu
 	}
 });
 
-// DELETE /files/:accountId/:fileName - delete a specific file
 router.delete('/files/:accountId/:fileName', async (req: Request, res: Response, next: NextFunction) => {
 	try {
 		const { accountId, fileName } = req.params;

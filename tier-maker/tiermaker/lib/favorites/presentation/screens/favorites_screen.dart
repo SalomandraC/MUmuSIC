@@ -168,7 +168,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       MaterialPageRoute(
         builder: (context) => NetworkTrackDetailsScreen(
           track: networkTrack,
-          isFavorite: track.favorite,
+          isFavorite: true,
         ),
       ),
     );

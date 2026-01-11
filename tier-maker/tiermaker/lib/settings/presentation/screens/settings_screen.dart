@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';    
+import 'package:go_router/go_router.dart';
 import 'package:RandomTierList/core/global_widgets/panel_header.dart';
 import 'package:RandomTierList/settings/presentation/providers/settings_provider.dart';
 import 'package:RandomTierList/theme/theme.dart';
@@ -48,7 +48,7 @@ class SettingsScreen extends StatelessWidget {
                             if (states.contains(MaterialState.selected)) {
                               return settingsModel.appModel.isDarkTheme
                                   ? AppTheme.primaryColorLight
-                                  : AppTheme.primaryColor; 
+                                  : AppTheme.primaryColor;
                             }
                             return Colors.grey.shade400;
                           },
@@ -71,7 +71,7 @@ class SettingsScreen extends StatelessWidget {
                       text: 'Поделиться приложением',
                       icon: Icons.share,
                       onTap: () => shareApp(context),
-                    ),        
+                    ),
                     SettingsItem(
                       text: 'Связаться с поддержкой',
                       icon: Icons.support_agent,
@@ -80,7 +80,7 @@ class SettingsScreen extends StatelessWidget {
                     SettingsItem(
                       text: 'Пользовательское соглашение',
                       icon: Icons.arrow_forward_ios,
-                      onTap: () => openUserAgreement(context),
+                      onTap: () => _showUserAgreement(context),
                     ),
                     SettingsItem(
                       text: 'Настройка API сервера',
@@ -114,6 +114,30 @@ class SettingsScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => const SyncDialog(),
+    );
+  }
+
+  void _showUserAgreement(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Пользовательское соглашение'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Мое приложение позволяет скачивать музыку с API iTunes и загружать пользователю музыку в приложение и на сервер, которую он скачал на сторонних ресурсах.\n Я не являюсь правообладателем, и в случае скачивания ответственность лежит на площадке, с которой проходит скачивание.\n В случае добавления в приложение пользователем, ответственность лежит на самом пользователе.',
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Закрыть'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -337,7 +361,7 @@ class _SyncDialogState extends State<SyncDialog> {
     });
 
     final downloadedTracks = await _getDownloadedTracks();
-    
+
     setState(() {
       _totalProgress = downloadedTracks.length;
       _currentProgress = 0;
@@ -369,16 +393,17 @@ class _SyncDialogState extends State<SyncDialog> {
     return await useCase.execute();
   }
 
-  void _showResult(BuildContext context, Map<String, dynamic> result, String dataType) {
+  void _showResult(
+      BuildContext context, Map<String, dynamic> result, String dataType) {
     final success = result['success'] == true;
     String message;
-    
+
     if (result['results'] != null) {
       // Результат загрузки всех данных
       final results = result['results'] as Map<String, dynamic>;
       final tracksResult = results['tracks'] as Map<String, dynamic>?;
       final playlistsResult = results['playlists'] as Map<String, dynamic>?;
-      
+
       final parts = <String>[];
       if (tracksResult != null) {
         final successCount = tracksResult['successCount'] as int? ?? 0;
@@ -388,14 +413,12 @@ class _SyncDialogState extends State<SyncDialog> {
       if (playlistsResult != null && playlistsResult['success'] == true) {
         parts.add('Плейлисты: загружены');
       }
-      
-      message = parts.isEmpty 
-          ? 'Данные успешно загружены'
-          : parts.join('\n');
+
+      message = parts.isEmpty ? 'Данные успешно загружены' : parts.join('\n');
     } else {
-      message = result['message'] as String? ?? 
-               result['error'] as String? ?? 
-               (success ? 'Данные успешно загружены' : 'Ошибка загрузки');
+      message = result['message'] as String? ??
+          result['error'] as String? ??
+          (success ? 'Данные успешно загружены' : 'Ошибка загрузки');
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -454,4 +477,3 @@ class SettingsItem extends StatelessWidget {
     );
   }
 }
-

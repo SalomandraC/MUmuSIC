@@ -138,8 +138,6 @@ class _NetworkTrackDetailsScreenState extends State<NetworkTrackDetailsScreen> {
         await _audioPlayer.pause();
         return;
       }
-
-      // Если трек уже загружен, просто продолжаем воспроизведение
       if (_audioPlayer.processingState == ProcessingState.ready) {
         await _audioPlayer.play();
         return;

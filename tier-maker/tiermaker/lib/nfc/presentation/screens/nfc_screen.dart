@@ -8,7 +8,6 @@ import 'package:http/http.dart' as http;
 import 'package:RandomTierList/core/api/guest_tracks_api.dart';
 import 'package:RandomTierList/core/global_widgets/panel_header.dart';
 
-// Platform channel для обработки NFC intent'ов
 const MethodChannel _nfcChannel = MethodChannel('com.example.tiermaker/nfc');
 
 class NfcScreen extends StatefulWidget {
@@ -36,7 +35,7 @@ class _NfcScreenState extends State<NfcScreen> {
     var cleaned = text;
     while (cleaned.isNotEmpty && cleaned.codeUnitAt(0) < 32) {
       debugPrint(
-          '🔵 [NfcScreen] Удален невидимый символ: 0x${cleaned.codeUnitAt(0).toRadixString(16)}');
+          '[NfcScreen] Удален невидимый символ: 0x${cleaned.codeUnitAt(0).toRadixString(16)}');
       cleaned = cleaned.substring(1);
     }
 
@@ -68,7 +67,7 @@ class _NfcScreenState extends State<NfcScreen> {
         });
 
         if (state.processingState == ProcessingState.completed) {
-          debugPrint('✅ [NfcScreen] Воспроизведение завершено');
+          debugPrint('[NfcScreen] Воспроизведение завершено');
           if (mounted) {
             setState(() {
               _isPlaying = false;
@@ -80,7 +79,7 @@ class _NfcScreenState extends State<NfcScreen> {
         }
       }
     }, onError: (error) {
-      debugPrint('❌ [NfcScreen] Ошибка в playerStateStream: $error');
+      debugPrint('[NfcScreen] Ошибка в playerStateStream: $error');
     });
 
     _positionSubscription = _audioPlayer.positionStream.listen((position) {
@@ -198,7 +197,7 @@ class _NfcScreenState extends State<NfcScreen> {
     } catch (e) {
       debugPrint('⚠️ [NfcScreen] Ошибка проверки доступности NFC: $e');
       setState(() {
-        _isNfcAvailable = false;
+        _isNfcAvailable = true;
       });
     }
   }

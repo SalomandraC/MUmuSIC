@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 /// Цветовая схема приложения
 abstract class AppTheme {
-
   /// Основные цвета
   static const Color whiteColor = Colors.white;
   static const Color blackColor = Colors.black;
@@ -16,32 +15,33 @@ abstract class AppTheme {
   static const Color purpleColor = Colors.purple;
   static const Color pinkColor = Colors.pink;
   static const Color brownColor = Colors.brown;
-  
+
   // Основной цвет (красный)
   static const Color primaryColor = Color(0xFFFF0000); // #FF0000
   static const Color primaryColorDark = Color(0xFFBF3030); // #BF3030
   static const Color primaryColorDarker = Color(0xFFA60000); // #A60000
   static const Color primaryColorLight = Color(0xFFFF4040); // #FF4040
   static const Color primaryColorLighter = Color(0xFFFF7373); // #FF7373
-  
+
   // Вторичный цвет A (оранжевый)
   static const Color secondaryColorA = Color(0xFFFF7400); // #FF7400
   static const Color secondaryColorADark = Color(0xFFBF7130); // #BF7130
   static const Color secondaryColorADarker = Color(0xFFA64B00); // #A64B00
   static const Color secondaryColorALight = Color(0xFFFF9640); // #FF9640
   static const Color secondaryColorALighter = Color(0xFFFFB273); // #FFB273
-  
+
   // Вторичный цвет B (розовый/пурпурный)
   static const Color secondaryColorB = Color(0xFFCD0074); // #CD0074
   static const Color secondaryColorBDark = Color(0xFF992667); // #992667
   static const Color secondaryColorBDarker = Color(0xFF85004B); // #85004B
   static const Color secondaryColorBLight = Color(0xFFE6399B); // #E6399B
   static const Color secondaryColorBLighter = Color(0xFFE667AF); // #E667AF
-  
+
   // Основной цвет фона
   // Используется: scaffoldBackgroundColor - фон всего экрана (Scaffold)
-  static const Color primaryBackgroundColor = primaryColor;
-  
+  static const Color primaryBackgroundColor =
+      Color.fromARGB(255, 242, 145, 138);
+
   // Цвета для светлой темы
 
   // Используется: colorScheme.primary - иконки меню (MenuItemWidget), текст настроек (SettingsItem)
@@ -107,7 +107,7 @@ abstract class AppTheme {
         surface: lightSurface,
         onSurface: lightOnSurface,
         onSurfaceVariant: lightOnSurfaceVariant,
-        inverseSurface: lightInverseSurface,
+        inverseSurface: Color.fromARGB(255, 248, 122, 164),
         scrim: lightScrim,
       ),
       appBarTheme: const AppBarTheme(

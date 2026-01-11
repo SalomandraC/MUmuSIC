@@ -15,7 +15,7 @@ class ITunesApi {
       final encodedQuery = Uri.encodeComponent(query);
       final url = '$baseUrl/search?term=$encodedQuery&media=music&entity=song&limit=$limit';
 
-      debugPrint('🔵 [ITunesApi] Поиск треков: $url');
+      debugPrint('[ITunesApi] Поиск треков: $url');
 
       final response = await http.get(
         Uri.parse(url),
@@ -35,14 +35,14 @@ class ITunesApi {
             .map((json) => Track.fromJson(json as Map<String, dynamic>))
             .toList();
 
-        debugPrint('✅ [ITunesApi] Найдено треков: ${tracks.length}');
+        debugPrint('[ITunesApi] Найдено треков: ${tracks.length}');
         return tracks;
       } else {
-        debugPrint('❌ [ITunesApi] Ошибка: ${response.statusCode}');
+        debugPrint('[ITunesApi] Ошибка: ${response.statusCode}');
         throw Exception('Ошибка поиска треков: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('❌ [ITunesApi] Ошибка поиска: $e');
+      debugPrint('[ITunesApi] Ошибка поиска: $e');
       rethrow;
     }
   }

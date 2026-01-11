@@ -75,7 +75,6 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 app.use('/', authRoutes);
 app.use('/', filesRoutes);
 
-// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -86,9 +85,8 @@ app.use(notFoundHandler);
 // Централизованная обработка ошибок
 app.use(errorHandler);
 
-// Запуск сервера
 app.listen(Number(PORT), '0.0.0.0', () => {
-  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-  console.log(`📚 Swagger docs available at http://0.0.0.0:${PORT}/api-docs`);
-  console.log(`🌍 Environment: ${NODE_ENV}`);
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
+  console.log(`Swagger docs available at http://0.0.0.0:${PORT}/api-docs`);
+  console.log(`Environment: ${NODE_ENV}`);
 });

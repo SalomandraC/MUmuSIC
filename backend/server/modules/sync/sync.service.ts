@@ -1,7 +1,5 @@
 import { SyncRepository } from './sync.repository';
 import { SyncData, UserPlaylist } from './sync.types';
-import { TracksRepository } from '../tracks/tracks.repository';
-import { CreateTrackRequest } from '../tracks/tracks.types';
 
 export class SyncService {
   static async getUserData(userId: number): Promise<SyncData> {

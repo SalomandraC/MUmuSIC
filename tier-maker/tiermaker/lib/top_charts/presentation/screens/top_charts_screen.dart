@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:RandomTierList/core/api/top_chart_api.dart';
 import 'package:RandomTierList/core/api/guest_tracks_api.dart';
 import 'package:RandomTierList/core/global_widgets/panel_header.dart';
 import 'package:RandomTierList/home/presentation/screens/universal_track_details_screen.dart';
@@ -16,7 +17,7 @@ class TopChartsScreen extends StatefulWidget {
 class _TopChartsScreenState extends State<TopChartsScreen> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   final ScrollController _scrollController = ScrollController();
-  List<GuestTrack> _tracks = [];
+  List<TopChart> _tracks = [];
   bool _isLoading = true;
   String? _errorMessage;
   int? _currentlyPlayingId;
@@ -73,22 +74,20 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
     });
 
     try {
-      final tracks = await GuestTracksApi.getGuestTracks();
-      // Сортируем по количеству прослушиваний (playCount) по убыванию
-      tracks.sort((a, b) => b.playCount.compareTo(a.playCount));
+      final tracks = await TopChartApi.fetchTopCharts();
       setState(() {
         _tracks = tracks;
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Ошибка загрузки треков: $e';
+        _errorMessage = 'Ошибка загрузки топ-чартов: $e';
         _isLoading = false;
       });
     }
   }
 
-  Future<void> _playTrack(GuestTrack track) async {
+  Future<void> _playTrack(TopChart track) async {
     try {
       if (_currentlyPlayingId == track.id && _isPlaying) {
         await _audioPlayer.pause();
@@ -101,7 +100,12 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
         if (track.streamUrl.isNotEmpty) {
           streamUrl = track.streamUrl;
         } else {
-          streamUrl = await GuestTracksApi.getStreamUrl(track.id);
+          streamUrl = await TopChartApi.getTopChartStreamUrl(track.id);
+        }
+
+        if (!streamUrl.startsWith('http')) {
+          final base = await TopChartApi.getBaseUrl();
+          streamUrl = base + (streamUrl.startsWith('/') ? '' : '/') + streamUrl;
         }
 
         final uri = Uri.parse(streamUrl);
@@ -133,7 +137,8 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
           attempts++;
         }
 
-        if (!isReady && _audioPlayer.playerState.processingState != ProcessingState.ready) {
+        if (!isReady &&
+            _audioPlayer.playerState.processingState != ProcessingState.ready) {
           throw Exception('Плеер не готов к воспроизведению');
         }
 
@@ -206,11 +211,27 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
     _audioPlayer.seek(position);
   }
 
-  Future<void> _openTrackDetails(GuestTrack track) async {
+  Future<void> _openTrackDetails(TopChart track) async {
+    // Преобразуем TopChart в GuestTrack для совместимости с UniversalTrackDetailsScreen
+    final guestTrack = GuestTrack(
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      filePath: track.filePath,
+      fileFormat: track.fileFormat,
+      duration: track.duration,
+      fileSize: track.fileSize,
+      isActive: track.isActive,
+      playCount: track.playCount,
+      createdAt: track.createdAt,
+      url: track.url,
+      streamUrl: track.streamUrl,
+    );
+
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => UniversalTrackDetailsScreen(
-          guestTrack: track,
+          guestTrack: guestTrack,
         ),
       ),
     );
@@ -250,7 +271,8 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
                                   const SizedBox(height: 16),
                                   Text(
                                     'Ошибка подключения',
-                                    style: theme.textTheme.headlineSmall?.copyWith(
+                                    style:
+                                        theme.textTheme.headlineSmall?.copyWith(
                                       color: theme.colorScheme.error,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -307,88 +329,106 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
                                               .withValues(alpha: 0.3)
                                           : null,
                                       child: ListTile(
-                                      leading: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            width: 32,
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              '#$rank',
-                                              style: theme.textTheme.titleSmall?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                color: rank <= 3
+                                        leading: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              width: 32,
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                '#$rank',
+                                                style: theme
+                                                    .textTheme.titleSmall
+                                                    ?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: rank <= 3
+                                                      ? theme
+                                                          .colorScheme.primary
+                                                      : theme.colorScheme
+                                                          .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            IconButton(
+                                              icon: Icon(
+                                                isCurrentlyPlaying && _isPlaying
+                                                    ? Icons.pause_circle_filled
+                                                    : Icons.play_circle_filled,
+                                                color: isCurrentlyPlaying
                                                     ? theme.colorScheme.primary
-                                                    : theme.colorScheme.onSurfaceVariant,
+                                                    : theme.colorScheme
+                                                        .onSurfaceVariant,
+                                                size: 40,
                                               ),
+                                              onPressed: () =>
+                                                  _playTrack(track),
                                             ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          IconButton(
-                                            icon: Icon(
-                                              isCurrentlyPlaying && _isPlaying
-                                                  ? Icons.pause_circle_filled
-                                                  : Icons.play_circle_filled,
-                                              color: isCurrentlyPlaying
-                                                  ? theme.colorScheme.primary
-                                                  : theme.colorScheme.onSurfaceVariant,
-                                              size: 40,
-                                            ),
-                                            onPressed: () => _playTrack(track),
-                                          ),
-                                        ],
-                                      ),
-                                      title: Text(
-                                        track.title,
-                                        style: theme.textTheme.titleMedium?.copyWith(
-                                          fontWeight: isCurrentlyPlaying
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                          color: isCurrentlyPlaying
-                                              ? theme.colorScheme.primary
-                                              : null,
+                                          ],
                                         ),
-                                      ),
-                                      subtitle: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          if (track.artist.isNotEmpty)
-                                            Text(
-                                              track.artist,
-                                              style: theme.textTheme.bodyMedium,
-                                            ),
-                                          const SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.play_arrow,
-                                                size: 14,
-                                                color: theme.colorScheme.onSurfaceVariant,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                '${track.playCount}',
-                                                style: theme.textTheme.bodySmall?.copyWith(
-                                                  color: theme.colorScheme.onSurfaceVariant,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 16),
-                                              Text(
-                                                _formatDuration(track.duration),
-                                                style: theme.textTheme.bodySmall?.copyWith(
-                                                  color: theme.colorScheme.onSurfaceVariant,
-                                                ),
-                                              ),
-                                            ],
+                                        title: Text(
+                                          track.title,
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                            fontWeight: isCurrentlyPlaying
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                            color: isCurrentlyPlaying
+                                                ? theme.colorScheme.primary
+                                                : null,
                                           ),
-                                        ],
-                                      ),
-                                      trailing: isCurrentlyPlaying
-                                          ? Icon(
-                                              Icons.graphic_eq,
-                                              color: theme.colorScheme.primary,
-                                            )
-                                          : null,
+                                        ),
+                                        subtitle: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            if (track.artist.isNotEmpty)
+                                              Text(
+                                                track.artist,
+                                                style:
+                                                    theme.textTheme.bodyMedium,
+                                              ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.play_arrow,
+                                                  size: 14,
+                                                  color: theme.colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  '${track.playCount}',
+                                                  style: theme
+                                                      .textTheme.bodySmall
+                                                      ?.copyWith(
+                                                    color: theme.colorScheme
+                                                        .onSurfaceVariant,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 16),
+                                                Text(
+                                                  _formatDuration(
+                                                      track.duration),
+                                                  style: theme
+                                                      .textTheme.bodySmall
+                                                      ?.copyWith(
+                                                    color: theme.colorScheme
+                                                        .onSurfaceVariant,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        trailing: isCurrentlyPlaying
+                                            ? Icon(
+                                                Icons.graphic_eq,
+                                                color:
+                                                    theme.colorScheme.primary,
+                                              )
+                                            : null,
                                         onTap: () => _playTrack(track),
                                         enableFeedback: false,
                                       ),
@@ -400,7 +440,8 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
             ),
             if (_currentlyPlayingId != null)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerHighest,
                   border: Border(
@@ -421,7 +462,10 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                _tracks.firstWhere((t) => t.id == _currentlyPlayingId).title,
+                                _tracks
+                                    .firstWhere(
+                                        (t) => t.id == _currentlyPlayingId)
+                                    .title,
                                 style: theme.textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -429,7 +473,10 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                _tracks.firstWhere((t) => t.id == _currentlyPlayingId).artist,
+                                _tracks
+                                    .firstWhere(
+                                        (t) => t.id == _currentlyPlayingId)
+                                    .artist,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
@@ -454,8 +501,8 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
                         Expanded(
                           child: Slider(
                             value: _duration.inMilliseconds > 0
-                                ? (_position.inMilliseconds.toDouble())
-                                    .clamp(0.0, _duration.inMilliseconds.toDouble())
+                                ? (_position.inMilliseconds.toDouble()).clamp(
+                                    0.0, _duration.inMilliseconds.toDouble())
                                 : 0.0,
                             max: _duration.inMilliseconds > 0
                                 ? _duration.inMilliseconds.toDouble()
@@ -521,4 +568,3 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
     );
   }
 }
-

@@ -10,6 +10,10 @@ import authRoutes from './modules/auth/auth.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import syncRoutes from './modules/sync/sync.routes';
 import tracksRoutes from './modules/tracks/tracks.routes';
+import topChartRoutes from './modules/top-chart/top-chart.routes';
+
+// Проверка загрузки маршрута
+console.log('[Server] TopChart routes loaded:', typeof topChartRoutes);
 
 const app: Application = express();
 
@@ -76,6 +80,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 
 // Роуты
 app.use('/auth', authRoutes);
+
 app.use('/storage', express.static(appConfig.storageRoot, {
   setHeaders: (res) => {
     res.setHeader('Accept-Ranges', 'bytes');
@@ -83,7 +88,10 @@ app.use('/storage', express.static(appConfig.storageRoot, {
   }
 }));
 app.use('/sync', syncRoutes);
+
 app.use('/tracks', tracksRoutes);
+
+app.use('/top-charts', topChartRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

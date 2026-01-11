@@ -15,6 +15,9 @@ const auth_routes_1 = __importDefault(require("./modules/auth/auth.routes"));
 const errorHandler_1 = require("./middleware/errorHandler");
 const sync_routes_1 = __importDefault(require("./modules/sync/sync.routes"));
 const tracks_routes_1 = __importDefault(require("./modules/tracks/tracks.routes"));
+const top_chart_routes_1 = __importDefault(require("./modules/top-chart/top-chart.routes"));
+// Проверка загрузки маршрута
+console.log('[Server] TopChart routes loaded:', typeof top_chart_routes_1.default);
 const app = (0, express_1.default)();
 const allowedOrigins = [
     'http://localhost:3000',
@@ -80,6 +83,7 @@ app.use('/storage', express_1.default.static(appConfig_1.appConfig.storageRoot, 
 }));
 app.use('/sync', sync_routes_1.default);
 app.use('/tracks', tracks_routes_1.default);
+app.use('/top-charts', top_chart_routes_1.default);
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });

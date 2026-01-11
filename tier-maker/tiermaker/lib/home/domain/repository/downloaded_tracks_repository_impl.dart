@@ -7,42 +7,47 @@ import 'i_downloaded_tracks_repository.dart';
 /// Реализация репозитория для работы со скачанными треками
 class DownloadedTracksRepositoryImpl implements IDownloadedTracksRepository {
   /// Получить директорию для скачанных треков
+  /// ВАЖНО: Должен использовать тот же путь, что и NetworkRepository и DownloadService
   Future<Directory> _getDownloadDirectory() async {
     if (Platform.isAndroid) {
+      // ПРИОРИТЕТ 1: Используем путь, где реально скачиваются файлы
+      // Это путь, который использует NetworkRepository
       try {
-        // Пытаемся использовать стандартную директорию Downloads
+        final directory = Directory('/storage/emulated/0/Download/MuMuSIC');
+        if (await directory.exists()) {
+          debugPrint(
+              '✅ [DownloadedTracksRepository] Используется путь скачивания: ${directory.path}');
+          return directory;
+        }
+        // Если директория не существует, пытаемся создать
+        if (await _canCreateDirectory(directory)) {
+          debugPrint(
+              '✅ [DownloadedTracksRepository] Создана директория скачивания: ${directory.path}');
+          return directory;
+        }
+      } catch (e) {
+        debugPrint(
+            '⚠️ [DownloadedTracksRepository] Ошибка пути скачивания: $e');
+      }
+
+      // ПРИОРИТЕТ 2: Fallback на директорию приложения (если основной путь недоступен)
+      try {
         final directory = await getExternalStorageDirectory();
         if (directory != null) {
-          // Используем поддиректорию Downloads в приложении
           final downloadDir = Directory('${directory.path}/Downloads/MuMuSIC');
           if (!await downloadDir.exists()) {
             await downloadDir.create(recursive: true);
           }
           debugPrint(
-              '✅ [DownloadedTracksRepository] Используется путь: ${downloadDir.path}');
+              '✅ [DownloadedTracksRepository] Используется fallback путь: ${downloadDir.path}');
           return downloadDir;
         }
       } catch (e) {
         debugPrint(
-            '⚠️ [DownloadedTracksRepository] Ошибка получения стандартной директории: $e');
+            '⚠️ [DownloadedTracksRepository] Ошибка получения fallback директории: $e');
       }
 
-      // Fallback: пытаемся использовать старый путь
-      try {
-        final directory = Directory('/storage/emulated/0/Download/MuMuSIC');
-        if (await directory.exists() || await _canCreateDirectory(directory)) {
-          if (!await directory.exists()) {
-            await directory.create(recursive: true);
-          }
-          debugPrint(
-              '✅ [DownloadedTracksRepository] Используется fallback путь: ${directory.path}');
-          return directory;
-        }
-      } catch (e) {
-        debugPrint('⚠️ [DownloadedTracksRepository] Ошибка fallback пути: $e');
-      }
-
-      // Последний fallback: используем директорию приложения
+      // ПРИОРИТЕТ 3: Последний fallback - директория приложения
       final directory = await getApplicationDocumentsDirectory();
       final downloadDir = Directory('${directory.path}/Downloads/MuMuSIC');
       if (!await downloadDir.exists()) {
@@ -81,8 +86,9 @@ class DownloadedTracksRepositoryImpl implements IDownloadedTracksRepository {
   /// Парсинг имени файла для извлечения информации о треке
   DownloadedTrack _parseTrackFromFile(File file) {
     final fileName = file.path.split('/').last;
-    final nameWithoutExt =
-        fileName.replaceAll(RegExp(r'\.(m4a|mp3|mp4|aac)$'), '');
+    // Удаляем все поддерживаемые расширения аудио файлов
+    final nameWithoutExt = fileName.replaceAll(
+        RegExp(r'\.(m4a|mp3|mp4|aac|wav|flac)$', caseSensitive: false), '');
 
     // Формат: "Artist - Track Name"
     String trackName = nameWithoutExt;
@@ -95,6 +101,9 @@ class DownloadedTracksRepositoryImpl implements IDownloadedTracksRepository {
         trackName = parts.sublist(1).join(' - ').trim();
       }
     }
+
+    debugPrint(
+        '📝 [DownloadedTracksRepository] Парсинг файла: $fileName -> "$artistName - $trackName"');
 
     return DownloadedTrack(
       filePath: file.path,
@@ -132,26 +141,53 @@ class DownloadedTracksRepositoryImpl implements IDownloadedTracksRepository {
         entities = directory.listSync(recursive: false);
         debugPrint(
             '📄 [DownloadedTracksRepository] Найдено элементов: ${entities.length}');
+
+        // Логируем все найденные элементы для диагностики
+        for (var entity in entities) {
+          if (entity is File) {
+            debugPrint('  📄 Файл: ${entity.path.split('/').last}');
+          } else if (entity is Directory) {
+            debugPrint('  📁 Директория: ${entity.path.split('/').last}');
+          }
+        }
       } catch (e) {
         debugPrint(
             '❌ [DownloadedTracksRepository] Ошибка чтения директории: $e');
         return [];
       }
 
-      final files = entities.whereType<File>().where((file) {
+      // Фильтруем файлы по расширению
+      final potentialFiles = entities.whereType<File>().where((file) {
         final ext = file.path.toLowerCase();
-        final isAudioFile = ext.endsWith('.m4a') ||
+        return ext.endsWith('.m4a') ||
             ext.endsWith('.mp3') ||
             ext.endsWith('.mp4') ||
             ext.endsWith('.aac') ||
             ext.endsWith('.wav') ||
             ext.endsWith('.flac');
-        if (isAudioFile) {
-          debugPrint(
-              '🎵 [DownloadedTracksRepository] Найден аудио файл: ${file.path}');
-        }
-        return isAudioFile;
       }).toList();
+
+      debugPrint(
+          '🎵 [DownloadedTracksRepository] Найдено потенциальных аудио файлов: ${potentialFiles.length}');
+
+      // Проверяем существование и доступность файлов
+      final files = <File>[];
+      for (final file in potentialFiles) {
+        try {
+          if (await file.exists()) {
+            final size = await file.length();
+            debugPrint(
+                '✅ [DownloadedTracksRepository] Аудио файл подтвержден: ${file.path.split('/').last} (размер: $size байт)');
+            files.add(file);
+          } else {
+            debugPrint(
+                '⚠️ [DownloadedTracksRepository] Файл не существует: ${file.path}');
+          }
+        } catch (e) {
+          debugPrint(
+              '❌ [DownloadedTracksRepository] Ошибка проверки файла ${file.path}: $e');
+        }
+      }
 
       debugPrint(
           '🎵 [DownloadedTracksRepository] Найдено аудио файлов: ${files.length}');

@@ -289,43 +289,46 @@ class DownloadService {
   }
 
   /// Получение директории для скачивания
-  /// Использует ту же логику, что и DownloadedTracksRepositoryImpl
+  /// ВАЖНО: Должен использовать тот же путь, что и NetworkRepository
   static Future<Directory> _getDownloadDirectory() async {
     if (Platform.isAndroid) {
+      // ПРИОРИТЕТ 1: Используем путь, где реально скачиваются файлы
+      // Это путь, который использует NetworkRepository
       try {
-        // Пытаемся использовать стандартную директорию Downloads
+        final directory = Directory('/storage/emulated/0/Download/MuMuSIC');
+        if (await directory.exists()) {
+          debugPrint(
+              '[DownloadService] ✅ Используется путь скачивания: ${directory.path}');
+          return directory;
+        }
+        // Если директория не существует, пытаемся создать
+        if (await _canCreateDirectory(directory)) {
+          debugPrint(
+              '[DownloadService] ✅ Создана директория скачивания: ${directory.path}');
+          return directory;
+        }
+      } catch (e) {
+        debugPrint('[DownloadService] ⚠️ Ошибка пути скачивания: $e');
+      }
+
+      // ПРИОРИТЕТ 2: Fallback на директорию приложения (если основной путь недоступен)
+      try {
         final directory = await getExternalStorageDirectory();
         if (directory != null) {
-          // Используем поддиректорию Downloads в приложении
           final downloadDir = Directory('${directory.path}/Downloads/MuMuSIC');
           if (!await downloadDir.exists()) {
             await downloadDir.create(recursive: true);
           }
           debugPrint(
-              '[DownloadService] ✅ Используется путь: ${downloadDir.path}');
+              '[DownloadService] ✅ Используется fallback путь: ${downloadDir.path}');
           return downloadDir;
         }
       } catch (e) {
         debugPrint(
-            '[DownloadService] ⚠️ Ошибка получения стандартной директории: $e');
+            '[DownloadService] ⚠️ Ошибка получения fallback директории: $e');
       }
 
-      // Fallback: пытаемся использовать старый путь
-      try {
-        final directory = Directory('/storage/emulated/0/Download/MuMuSIC');
-        if (await directory.exists() || await _canCreateDirectory(directory)) {
-          if (!await directory.exists()) {
-            await directory.create(recursive: true);
-          }
-          debugPrint(
-              '[DownloadService] ✅ Используется fallback путь: ${directory.path}');
-          return directory;
-        }
-      } catch (e) {
-        debugPrint('[DownloadService] ⚠️ Ошибка fallback пути: $e');
-      }
-
-      // Последний fallback: используем директорию приложения
+      // ПРИОРИТЕТ 3: Последний fallback - директория приложения
       final directory = await getApplicationDocumentsDirectory();
       final downloadDir = Directory('${directory.path}/Downloads/MuMuSIC');
       if (!await downloadDir.exists()) {

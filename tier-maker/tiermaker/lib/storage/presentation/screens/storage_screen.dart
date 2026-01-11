@@ -22,10 +22,11 @@ class StorageScreen extends StatefulWidget {
 
 class _StorageScreenState extends State<StorageScreen> {
   final AudioPlayer _audioPlayer = AudioPlayer();
-  final IDownloadedTracksRepository _repository = DownloadedTracksRepositoryImpl();
+  final IDownloadedTracksRepository _repository =
+      DownloadedTracksRepositoryImpl();
   late final GetDownloadedTracksUseCase _getDownloadedTracksUseCase;
   late final DeleteDownloadedTrackUseCase _deleteDownloadedTrackUseCase;
-  
+
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<Duration?>? _durationSubscription;
 
@@ -44,6 +45,13 @@ class _StorageScreenState extends State<StorageScreen> {
     super.initState();
     _getDownloadedTracksUseCase = GetDownloadedTracksUseCase(_repository);
     _deleteDownloadedTrackUseCase = DeleteDownloadedTrackUseCase(_repository);
+    _loadTracks();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Обновляем список при возврате на экран
     _loadTracks();
 
     _audioPlayer.playerStateStream.listen((state) {
@@ -122,7 +130,7 @@ class _StorageScreenState extends State<StorageScreen> {
           SnackBar(
             content: Text('Ошибка воспроизведения: ${e.message ?? e.code}'),
             duration: const Duration(seconds: 3),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color.fromARGB(255, 239, 132, 124),
           ),
         );
       }
@@ -132,7 +140,7 @@ class _StorageScreenState extends State<StorageScreen> {
           SnackBar(
             content: Text('Ошибка воспроизведения: $e'),
             duration: const Duration(seconds: 3),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color.fromARGB(255, 255, 151, 143),
           ),
         );
       }
@@ -153,7 +161,7 @@ class _StorageScreenState extends State<StorageScreen> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: const Color.fromARGB(255, 249, 139, 132),
             ),
             child: const Text('Удалить'),
           ),
@@ -187,7 +195,7 @@ class _StorageScreenState extends State<StorageScreen> {
             SnackBar(
               content: Text('Ошибка удаления: $e'),
               duration: const Duration(seconds: 3),
-              backgroundColor: Colors.red,
+              backgroundColor: const Color.fromARGB(255, 251, 126, 118),
             ),
           );
         }
@@ -241,7 +249,7 @@ class _StorageScreenState extends State<StorageScreen> {
 
     try {
       final result = await UploadService.uploadDownloadedTrack(track);
-      
+
       if (!mounted) return;
 
       if (result['success'] == true) {
@@ -257,7 +265,7 @@ class _StorageScreenState extends State<StorageScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка загрузки: $error'),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color.fromARGB(255, 255, 134, 125),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -322,7 +330,7 @@ class _StorageScreenState extends State<StorageScreen> {
       } catch (e) {
         failCount++;
       }
-      
+
       if (mounted) {
         setState(() {
           _uploadingTracks.remove(track.filePath);
@@ -351,15 +359,38 @@ class _StorageScreenState extends State<StorageScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const PanelHeader(
-              name: 'Внутреннее хранилище',
-              showBackButton: true,
+            Row(
+              children: [
+                const Expanded(
+                  child: PanelHeader(
+                    name: 'Внутреннее хранилище',
+                    showBackButton: true,
+                  ),
+                ),
+                IconButton(
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                  onPressed: _isLoading ? null : _loadTracks,
+                  tooltip: 'Обновить список',
+                ),
+              ],
             ),
-            if (isAuthorized && _tracks.isNotEmpty && !_isLoading && _errorMessage == null)
+            if (isAuthorized &&
+                _tracks.isNotEmpty &&
+                !_isLoading &&
+                _errorMessage == null)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ElevatedButton.icon(
-                  onPressed: _uploadingTracks.isEmpty ? () => _uploadAllTracks() : null,
+                  onPressed: _uploadingTracks.isEmpty
+                      ? () => _uploadAllTracks()
+                      : null,
                   icon: const Icon(Icons.cloud_upload),
                   label: const Text('Загрузить все треки на сервер'),
                   style: ElevatedButton.styleFrom(
@@ -414,8 +445,10 @@ class _StorageScreenState extends State<StorageScreen> {
                                     const SizedBox(height: 16),
                                     Text(
                                       'Нет скачанных треков',
-                                      style: theme.textTheme.bodyLarge?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
+                                      style:
+                                          theme.textTheme.bodyLarge?.copyWith(
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                   ],
@@ -428,7 +461,8 @@ class _StorageScreenState extends State<StorageScreen> {
                                   final track = _tracks[index];
                                   final isCurrentlyPlaying =
                                       _currentlyPlayingPath == track.filePath;
-                                  final isUploading = _uploadingTracks.contains(track.filePath);
+                                  final isUploading =
+                                      _uploadingTracks.contains(track.filePath);
                                   return DownloadedTrackItem(
                                     track: track,
                                     isCurrentlyPlaying: isCurrentlyPlaying,
@@ -436,8 +470,8 @@ class _StorageScreenState extends State<StorageScreen> {
                                     onPlay: () => _playTrack(track),
                                     onDelete: () => _deleteTrack(track),
                                     onLongPress: () => _openTrackDetails(track),
-                                    onUpload: isAuthorized && !isUploading 
-                                        ? () => _uploadTrack(track) 
+                                    onUpload: isAuthorized && !isUploading
+                                        ? () => _uploadTrack(track)
                                         : null,
                                     showUploadButton: isAuthorized,
                                     isUploading: isUploading,
@@ -470,7 +504,8 @@ class _StorageScreenState extends State<StorageScreen> {
                             children: [
                               Text(
                                 _tracks
-                                    .firstWhere((t) => t.filePath == _currentlyPlayingPath)
+                                    .firstWhere((t) =>
+                                        t.filePath == _currentlyPlayingPath)
                                     .trackName,
                                 style: theme.textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.bold,
@@ -480,7 +515,8 @@ class _StorageScreenState extends State<StorageScreen> {
                               ),
                               Text(
                                 _tracks
-                                    .firstWhere((t) => t.filePath == _currentlyPlayingPath)
+                                    .firstWhere((t) =>
+                                        t.filePath == _currentlyPlayingPath)
                                     .artistName,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
@@ -503,8 +539,8 @@ class _StorageScreenState extends State<StorageScreen> {
                         Expanded(
                           child: Slider(
                             value: _duration.inMilliseconds > 0
-                                ? (_position.inMilliseconds.toDouble())
-                                    .clamp(0.0, _duration.inMilliseconds.toDouble())
+                                ? (_position.inMilliseconds.toDouble()).clamp(
+                                    0.0, _duration.inMilliseconds.toDouble())
                                 : 0.0,
                             max: _duration.inMilliseconds > 0
                                 ? _duration.inMilliseconds.toDouble()
@@ -567,4 +603,3 @@ class _StorageScreenState extends State<StorageScreen> {
     );
   }
 }
-
