@@ -123,9 +123,6 @@ class DownloadService {
       debugPrint(
           '[DownloadService] ✅ Скачано файлов: $downloadedCount, ошибок: $failedCount');
 
-      // Треки скачиваются как файлы и будут отображаться во внутреннем хранилище
-      // Не сохраняем в избранное - файлы доступны через DownloadedTracksRepository
-
       final skippedCount = tracks.length - downloadedCount - failedCount;
       debugPrint(
           '[DownloadService] 📊 Итого: обработано ${tracks.length}, скачано $downloadedCount, пропущено $skippedCount, ошибок $failedCount');
@@ -227,8 +224,6 @@ class DownloadService {
     // Получаем директорию для сохранения
     final directory = await _getDownloadDirectory();
 
-    // Формируем имя файла в формате "Artist - Track Name.ext"
-    // Это соответствует формату, который ожидает DownloadedTracksRepositoryImpl
     final sanitizedTitle =
         _sanitizeFileName(track.trackName ?? 'Unknown Track');
     final sanitizedArtist =
