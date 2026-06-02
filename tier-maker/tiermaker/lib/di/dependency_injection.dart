@@ -44,8 +44,10 @@ class DependencyInjection {
   static final AddTrackToPlaylistUseCase addTrackToPlaylistUseCase =
       AddTrackToPlaylistUseCase(_playlistsRepository);
 
-  // Network Repository
-  static final INetworkRepository _networkRepository = NetworkRepositoryImpl();
+  // Network Repository (общий iTunes data source)
+  static final INetworkRepository _networkRepository = NetworkRepositoryImpl(
+    remoteDataSource: _remoteDataSource,
+  );
 
   // Download Use Case
   static final DownloadTrackUseCase downloadTrackUseCase =

@@ -1,11 +1,11 @@
 import 'package:RandomTierList/home/domain/model/network_track_model.dart';
 import 'package:RandomTierList/home/domain/repository/i_network_repository.dart';
 
-/// Use case для поиска треков в сети
-class SearchTracksUseCase {
+/// Use case для поиска треков в сети (вкладка «Сеть»)
+class SearchNetworkTracksUseCase {
   final INetworkRepository _repository;
 
-  SearchTracksUseCase(this._repository);
+  SearchNetworkTracksUseCase(this._repository);
 
   /// Выполнить поиск треков
   /// 

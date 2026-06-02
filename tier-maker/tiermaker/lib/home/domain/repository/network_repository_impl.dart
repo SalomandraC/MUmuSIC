@@ -3,39 +3,38 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart';
-import 'package:RandomTierList/core/api/itunes_api.dart';
+import 'package:RandomTierList/data/datasources/remote/itunes_remote_datasource.dart';
 import 'package:RandomTierList/home/domain/model/network_track_model.dart';
 import 'package:RandomTierList/home/domain/repository/i_network_repository.dart';
 
 /// Реализация репозитория для работы с треками из сети
 class NetworkRepositoryImpl implements INetworkRepository {
+  final ITunesRemoteDataSource _remoteDataSource;
+
+  NetworkRepositoryImpl({ITunesRemoteDataSource? remoteDataSource})
+      : _remoteDataSource =
+            remoteDataSource ?? ITunesRemoteDataSourceImpl();
+
   @override
   Future<List<NetworkTrack>> searchTracks({
     required String query,
     int limit = 50,
   }) async {
     try {
-      final iTunesTracks = await ITunesApi.searchTracks(
-        query: query,
-        limit: limit,
-      );
+      final dtos = await _remoteDataSource.searchTracks(query, limit: limit);
 
-      return iTunesTracks.map((itunesTrack) {
-        // Парсим trackTime обратно в миллисекунды для NetworkTrack
-        final timeParts = itunesTrack.trackTime.split(':');
-        final minutes = int.tryParse(timeParts[0]) ?? 0;
-        final seconds = int.tryParse(timeParts[1]) ?? 0;
-        final trackTimeMillis = (minutes * 60 + seconds) * 1000;
-
-        return NetworkTrack(
-          trackId: itunesTrack.id,
-          trackName: itunesTrack.trackName,
-          artistName: itunesTrack.artistName,
-          trackTimeMillis: trackTimeMillis,
-          previewUrl: itunesTrack.previewUrl,
-          artworkUrl100: itunesTrack.image,
-        );
-      }).toList();
+      return dtos
+          .map(
+            (dto) => NetworkTrack(
+              trackId: dto.trackId,
+              trackName: dto.trackName ?? '',
+              artistName: dto.artistName ?? '',
+              trackTimeMillis: dto.trackTimeMillis,
+              previewUrl: dto.previewUrl,
+              artworkUrl100: dto.artworkUrl100,
+            ),
+          )
+          .toList();
     } catch (e) {
       debugPrint('❌ [NetworkRepository] Ошибка поиска: $e');
       rethrow;

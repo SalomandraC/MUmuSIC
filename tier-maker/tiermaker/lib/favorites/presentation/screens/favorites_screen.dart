@@ -9,7 +9,7 @@ import 'package:RandomTierList/domain/usecases/toggle_favorite_usecase.dart';
 import 'package:RandomTierList/di/dependency_injection.dart';
 import 'package:RandomTierList/search/presentation/widgets/track_item.dart';
 import 'package:RandomTierList/home/domain/model/network_track_model.dart';
-import 'package:RandomTierList/home/presentation/screens/network_track_details_screen.dart';
+import 'package:RandomTierList/home/presentation/screens/universal_track_details_screen.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -166,8 +166,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final networkTrack = _trackEntityToNetworkTrack(track);
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => NetworkTrackDetailsScreen(
-          track: networkTrack,
+        builder: (context) => UniversalTrackDetailsScreen(
+          networkTrack: networkTrack,
           isFavorite: true,
         ),
       ),

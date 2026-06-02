@@ -13,11 +13,11 @@ import 'package:RandomTierList/home/domain/model/network_track_model.dart';
 import 'package:RandomTierList/home/domain/repository/i_network_repository.dart';
 import 'package:RandomTierList/home/domain/repository/network_repository_impl.dart';
 import 'package:RandomTierList/home/domain/usecase/download_track_usecase.dart';
-import 'package:RandomTierList/home/domain/usecase/search_tracks_usecase.dart';
+import 'package:RandomTierList/home/domain/usecase/search_network_tracks_usecase.dart';
 import 'package:RandomTierList/home/presentation/providers/network_provider.dart';
 import 'package:RandomTierList/home/presentation/state/network_model.dart';
 import 'package:RandomTierList/home/presentation/widgets/network_track_item.dart';
-import 'package:RandomTierList/home/presentation/screens/network_track_details_screen.dart';
+import 'package:RandomTierList/home/presentation/screens/universal_track_details_screen.dart';
 
 class NetworkScreen extends StatefulWidget {
   const NetworkScreen({super.key});
@@ -35,7 +35,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
   StreamSubscription<Duration?>? _durationSubscription;
 
   late final NetworkModel _model;
-  late final SearchTracksUseCase _searchUseCase;
+  late final SearchNetworkTracksUseCase _searchUseCase;
   late final DownloadTrackUseCase _downloadUseCase;
   late final INetworkRepository _repository;
 
@@ -60,7 +60,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
   void initState() {
     super.initState();
     _repository = NetworkRepositoryImpl();
-    _searchUseCase = SearchTracksUseCase(_repository);
+    _searchUseCase = SearchNetworkTracksUseCase(_repository);
     _downloadUseCase = DownloadTrackUseCase(_repository);
     _model = NetworkModel();
 
@@ -202,8 +202,8 @@ class _NetworkScreenState extends State<NetworkScreen> {
   Future<void> _openTrackDetails(NetworkTrack track) async {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => NetworkTrackDetailsScreen(
-          track: track,
+        builder: (context) => UniversalTrackDetailsScreen(
+          networkTrack: track,
           isFavorite: _favoriteIds.contains(
             (track.trackId ?? track.uniqueId.hashCode).toString(),
           ),
