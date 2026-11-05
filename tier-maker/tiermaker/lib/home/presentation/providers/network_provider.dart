@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:RandomTierList/home/presentation/state/network_model.dart';
+import 'package:mumusic/home/presentation/state/network_model.dart';
 
 class NetworkProvider extends InheritedNotifier<NetworkModel> {
   const NetworkProvider({

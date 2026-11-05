@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:RandomTierList/domain/entities/track.dart';
+import 'package:mumusic/domain/entities/track.dart';
 
 class TrackItem extends StatelessWidget {
   final TrackEntity track;

@@ -103,8 +103,15 @@ export class TracksController {
   }
 
   static async getTrack(req: AuthenticatedRequest, res: Response) {
+    const userId = Number(req.user?.sub);
+    if (!userId) {
+      return res.status(401).json({ error: 'Необходима аутентификация' });
+    }
+
     const id = Number(req.params.id);
-    const userId = req.user ? Number(req.user.sub) : undefined;
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(404).json({ error: 'Трек не найден' });
+    }
 
     const track = await TracksService.getTrackById(id, userId);
     if (!track) {

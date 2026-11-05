@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.tiermaker"
+    namespace = "com.example.mumusic"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

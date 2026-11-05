@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:RandomTierList/core/global_widgets/panel_header.dart';
-import 'package:RandomTierList/domain/entities/track.dart';
-import 'package:RandomTierList/domain/usecases/search_tracks_usecase.dart';
-import 'package:RandomTierList/domain/usecases/toggle_favorite_usecase.dart';
-import 'package:RandomTierList/domain/repositories/tracks_repository.dart';
-import 'package:RandomTierList/di/dependency_injection.dart';
-import 'package:RandomTierList/search/presentation/widgets/track_item.dart';
+import 'package:mumusic/core/audio/player_adapters.dart';
+import 'package:mumusic/core/audio/player_service.dart';
+import 'package:mumusic/core/global_widgets/panel_header.dart';
+import 'package:mumusic/domain/entities/track.dart';
+import 'package:mumusic/domain/usecases/search_tracks_usecase.dart';
+import 'package:mumusic/domain/usecases/toggle_favorite_usecase.dart';
+import 'package:mumusic/domain/repositories/tracks_repository.dart';
+import 'package:mumusic/di/dependency_injection.dart';
+import 'package:mumusic/search/presentation/widgets/track_item.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -19,11 +19,8 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final AudioPlayer _audioPlayer = AudioPlayer();
   final ScrollController _scrollController = ScrollController();
   Timer? _searchDebounceTimer;
-  StreamSubscription<Duration>? _positionSubscription;
-  StreamSubscription<Duration?>? _durationSubscription;
 
   final SearchTracksUseCase _searchTracksUseCase = DependencyInjection.searchTracksUseCase;
   final ToggleFavoriteUseCase _toggleFavoriteUseCase = DependencyInjection.toggleFavoriteUseCase;
@@ -33,11 +30,6 @@ class _SearchScreenState extends State<SearchScreen> {
   List<String> _searchHistory = [];
   bool _isSearching = false;
   String? _errorMessage;
-  int? _currentlyPlayingId;
-  bool _isPlaying = false;
-  Duration _position = Duration.zero;
-  Duration _duration = Duration.zero;
-  double _playbackSpeed = 1.0;
   bool _showHistory = false;
 
   @override
@@ -45,40 +37,13 @@ class _SearchScreenState extends State<SearchScreen> {
     super.initState();
     _loadSearchHistory();
     _searchController.addListener(_onSearchChanged);
-
-    _audioPlayer.playerStateStream.listen((state) {
-      if (mounted) {
-        setState(() {
-          _isPlaying = state.playing;
-        });
-      }
-    });
-
-    _positionSubscription = _audioPlayer.positionStream.listen((position) {
-      if (mounted) {
-        setState(() {
-          _position = position;
-        });
-      }
-    });
-
-    _durationSubscription = _audioPlayer.durationStream.listen((duration) {
-      if (mounted) {
-        setState(() {
-          _duration = duration ?? Duration.zero;
-        });
-      }
-    });
   }
 
   @override
   void dispose() {
     _searchDebounceTimer?.cancel();
-    _positionSubscription?.cancel();
-    _durationSubscription?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
-    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -133,59 +98,11 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  Future<void> _playTrack(TrackEntity track) async {
-    try {
-      if (_currentlyPlayingId == track.id && _isPlaying) {
-        await _audioPlayer.pause();
-        return;
-      }
-
-      if (track.previewUrl == null || track.previewUrl!.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Превью для этого трека недоступно'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-        return;
-      }
-
-      if (_currentlyPlayingId != null) {
-        await _audioPlayer.stop();
-      }
-
-      await _audioPlayer.setAudioSource(
-        AudioSource.uri(Uri.parse(track.previewUrl!)),
+  Future<void> _playTrack(TrackEntity track) => playFromList(
+        context,
+        _tracks.map((t) => t.toPlayerTrack()).toList(),
+        track.toPlayerTrack().id,
       );
-      await _audioPlayer.play();
-
-      setState(() {
-        _currentlyPlayingId = track.id;
-      });
-    } on PlatformException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка воспроизведения: ${e.message ?? e.code}'),
-            duration: const Duration(seconds: 3),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка воспроизведения: $e'),
-            duration: const Duration(seconds: 3),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   Future<void> _toggleFavorite(TrackEntity track) async {
     final updatedTrack = await _toggleFavoriteUseCase.execute(track);
@@ -200,12 +117,6 @@ class _SearchScreenState extends State<SearchScreen> {
   void _onHistoryItemTap(String query) {
     _searchController.text = query;
     _performSearch(query);
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -372,16 +283,20 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                     ] else ...[
                       Expanded(
-                        child: ListView.builder(
+                        child: ListenableBuilder(
+                          listenable: PlayerService.instance,
+                          builder: (context, _) => ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.all(16.0),
                           itemCount: _tracks.length,
                           itemBuilder: (context, index) {
                             final track = _tracks[index];
+                            final playerId = track.toPlayerTrack().id;
+                            final player = PlayerService.instance;
                             return TrackItem(
                               track: track,
-                              isCurrentlyPlaying: _currentlyPlayingId == track.id,
-                              isPlaying: _isPlaying && _currentlyPlayingId == track.id,
+                              isCurrentlyPlaying: player.isCurrent(playerId),
+                              isPlaying: player.isPlayingTrack(playerId),
                               onPlay: () => _playTrack(track),
                               onFavorite: () => _toggleFavorite(track),
                               onTap: () {
@@ -390,103 +305,9 @@ class _SearchScreenState extends State<SearchScreen> {
                             );
                           },
                         ),
+                        ),
                       ),
                     ],
-                    // Плеер внизу экрана
-                    if (_currentlyPlayingId != null)
-                      Container(
-                        padding: const EdgeInsets.all(16.0),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          border: Border(
-                            top: BorderSide(
-                              color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                            ),
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  _formatDuration(_position),
-                                  style: theme.textTheme.bodySmall,
-                                ),
-                                Expanded(
-                                  child: Slider(
-                                    value: _duration.inMilliseconds > 0
-                                        ? (_position.inMilliseconds.toDouble())
-                                            .clamp(0.0, _duration.inMilliseconds.toDouble())
-                                        : 0.0,
-                                    max: _duration.inMilliseconds > 0
-                                        ? _duration.inMilliseconds.toDouble()
-                                        : 1.0,
-                                    onChanged: (value) {
-                                      _audioPlayer.seek(Duration(milliseconds: value.toInt()));
-                                    },
-                                  ),
-                                ),
-                                Text(
-                                  _formatDuration(_duration),
-                                  style: theme.textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                IconButton(
-                                  icon: Text(
-                                    '${_playbackSpeed}x',
-                                    style: theme.textTheme.bodyMedium,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      if (_playbackSpeed >= 2.0) {
-                                        _playbackSpeed = 0.5;
-                                      } else if (_playbackSpeed >= 1.5) {
-                                        _playbackSpeed = 2.0;
-                                      } else if (_playbackSpeed >= 1.0) {
-                                        _playbackSpeed = 1.5;
-                                      } else {
-                                        _playbackSpeed = 1.0;
-                                      }
-                                      _audioPlayer.setSpeed(_playbackSpeed);
-                                    });
-                                  },
-                                ),
-                                IconButton(
-                                  iconSize: 48,
-                                  icon: Icon(
-                                    _isPlaying
-                                        ? Icons.pause_circle_filled
-                                        : Icons.play_circle_filled,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                  onPressed: () {
-                                    if (_isPlaying) {
-                                      _audioPlayer.pause();
-                                    } else {
-                                      _audioPlayer.play();
-                                    }
-                                  },
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.stop),
-                                  onPressed: () async {
-                                    await _audioPlayer.stop();
-                                    setState(() {
-                                      _currentlyPlayingId = null;
-                                      _position = Duration.zero;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
                   ],
                 ),
               ),

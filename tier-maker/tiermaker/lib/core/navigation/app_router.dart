@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:RandomTierList/app/app_routes.dart';
-import 'package:RandomTierList/app/models/app_model.dart';
-import 'package:RandomTierList/app/state/app_model_provider.dart';
-import 'package:RandomTierList/home/presentation/screens/main_screen.dart';
-import 'package:RandomTierList/home/presentation/screens/network_screen.dart';
-import 'package:RandomTierList/settings/domain/model/settings_model.dart';
-import 'package:RandomTierList/settings/presentation/providers/settings_provider.dart';
-import 'package:RandomTierList/settings/presentation/screens/settings_screen.dart';
-import 'package:RandomTierList/auth/presentation/screens/auth_screen.dart';
-import 'package:RandomTierList/nfc/presentation/screens/nfc_screen.dart';
-import 'package:RandomTierList/search/presentation/screens/search_screen.dart';
-import 'package:RandomTierList/favorites/presentation/screens/favorites_screen.dart';
-import 'package:RandomTierList/playlists/presentation/screens/playlists_screen.dart';
-import 'package:RandomTierList/playlists/presentation/screens/playlist_details_screen.dart';
-import 'package:RandomTierList/storage/presentation/screens/storage_screen.dart';
-import 'package:RandomTierList/top_charts/presentation/screens/top_charts_screen.dart';
+import 'package:mumusic/app/app_routes.dart';
+import 'package:mumusic/app/models/app_model.dart';
+import 'package:mumusic/app/state/app_model_provider.dart';
+import 'package:mumusic/home/presentation/screens/main_screen.dart';
+import 'package:mumusic/home/presentation/screens/network_screen.dart';
+import 'package:mumusic/settings/domain/model/settings_model.dart';
+import 'package:mumusic/settings/presentation/providers/settings_provider.dart';
+import 'package:mumusic/settings/presentation/screens/settings_screen.dart';
+import 'package:mumusic/auth/presentation/screens/auth_screen.dart';
+import 'package:mumusic/nfc/presentation/screens/nfc_screen.dart';
+import 'package:mumusic/search/presentation/screens/search_screen.dart';
+import 'package:mumusic/favorites/presentation/screens/favorites_screen.dart';
+import 'package:mumusic/playlists/presentation/screens/playlists_screen.dart';
+import 'package:mumusic/playlists/presentation/screens/playlist_details_screen.dart';
+import 'package:mumusic/storage/presentation/screens/storage_screen.dart';
+import 'package:mumusic/top_charts/presentation/screens/top_charts_screen.dart';
 
 class AppRouter {
   static GoRouter createRouter(AppModel appModel) {

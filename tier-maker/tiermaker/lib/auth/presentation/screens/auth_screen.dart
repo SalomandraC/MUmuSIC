@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:RandomTierList/app/app_routes.dart';
-import 'package:RandomTierList/app/state/app_model_provider.dart';
-import 'package:RandomTierList/core/api/auth_api.dart';
+import 'package:mumusic/app/app_routes.dart';
+import 'package:mumusic/app/state/app_model_provider.dart';
+import 'package:mumusic/core/api/auth_api.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});

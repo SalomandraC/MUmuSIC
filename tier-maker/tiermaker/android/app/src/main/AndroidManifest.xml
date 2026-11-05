@@ -15,7 +15,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     
     <application
-        android:label="tiermaker"
+        android:label="MuMuSIC"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">

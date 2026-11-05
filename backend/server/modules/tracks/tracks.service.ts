@@ -1,6 +1,7 @@
 import { TracksRepository } from './tracks.repository';
 import { CreateTrackRequest, TrackResponse } from './tracks.types';
 import { appConfig } from '../../config/appConfig';
+import { generateMediaToken } from '../../services/token.service';
 import fs from 'fs';
 import path from 'path';
 
@@ -28,7 +29,7 @@ export class TracksService {
     return tracks.map(track => this.mapToResponse(track));
   }
 
-  static async getTrackById(id: number, userId?: number): Promise<TrackResponse | null> {
+  static async getTrackById(id: number, userId: number): Promise<TrackResponse | null> {
     const track = await TracksRepository.findById(id);
     
     if (!track) return null;
@@ -38,7 +39,8 @@ export class TracksService {
       return null;
     }
     
-    if (userId && track.user_id !== userId && !track.is_public) {
+    // Чужой приватный трек выглядит так же, как несуществующий
+    if (track.user_id !== userId && !track.is_public) {
       return null;
     }
 
@@ -65,7 +67,11 @@ export class TracksService {
 
   private static mapToResponse(track: any): TrackResponse {
     const normalizedPath = track.file_path.replace(/\\/g, '/');
-    const fileUrl = `/storage/${normalizedPath}`;
+    // /storage/users/... отдаётся только владельцу. Приложение играет и скачивает
+    // трек по file_url без заголовка Authorization, поэтому ссылка подписана
+    // токеном на этот конкретный файл (срок жизни MEDIA_TOKEN_TTL)
+    const mediaToken = generateMediaToken(track.user_id, normalizedPath);
+    const fileUrl = `/storage/${normalizedPath.split('/').map(encodeURIComponent).join('/')}?token=${mediaToken}`;
     
     return {
       id: track.id,

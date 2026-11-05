@@ -1,4 +1,4 @@
-import 'package:RandomTierList/home/domain/model/network_track_model.dart';
+import 'package:mumusic/home/domain/model/network_track_model.dart';
 
 /// Интерфейс репозитория для работы с треками из сети
 abstract interface class INetworkRepository {

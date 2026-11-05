@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:RandomTierList/core/api/guest_tracks_api.dart';
+import 'package:mumusic/core/api/guest_tracks_api.dart';
 
 Future<void> shareApp(BuildContext context) async {
     try {
       await Share.share(
-        'Попробуйте Tier Maker - создавайте тир-листы!',
-        subject: 'Tier Maker',
+        'Попробуйте MuMuSIC — музыкальный плеер с NFC-метками!',
+        subject: 'MuMuSIC',
       );
     } catch (e) {
       if (context.mounted) {
@@ -21,7 +21,7 @@ Future<void> shareApp(BuildContext context) async {
   Future<void> contactSupport(BuildContext context) async {
     try {
       final email = 'kazak.petrushin@yandex.ru';
-      final subject = Uri.encodeComponent('Поддержка Tier Maker');
+      final subject = Uri.encodeComponent('Поддержка MuMuSIC');
       final body = Uri.encodeComponent('Здравствуйте,\n\n');
       final uri = Uri.parse('mailto:$email?subject=$subject&body=$body');
       

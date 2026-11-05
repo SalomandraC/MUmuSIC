@@ -6,8 +6,8 @@ if (!appConfig.databaseUrl) {
 }
 
 const sql = postgres(appConfig.databaseUrl!, {
-  ssl: appConfig.isProduction ? { rejectUnauthorized: false } : undefined,
-  max: 10,
+  ssl: appConfig.databaseSsl ? { rejectUnauthorized: false } : undefined,
+  max: appConfig.databasePoolMax,
   connect_timeout: 30,
 });
 

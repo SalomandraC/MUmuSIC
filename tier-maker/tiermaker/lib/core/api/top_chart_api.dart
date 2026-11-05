@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-import 'package:RandomTierList/core/app_database/app_database.dart';
+import 'package:mumusic/core/app_database/app_database.dart';
 import '../config/env_config.dart';
 
 class TopChart {

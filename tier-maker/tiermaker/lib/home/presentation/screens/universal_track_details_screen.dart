@@ -1,19 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:flutter/services.dart';
-import 'package:RandomTierList/core/global_widgets/panel_header.dart';
-import 'package:RandomTierList/home/domain/model/network_track_model.dart';
-import 'package:RandomTierList/home/domain/model/downloaded_track_model.dart';
-import 'package:RandomTierList/core/api/guest_tracks_api.dart';
-import 'package:RandomTierList/domain/entities/track.dart' as domain;
-import 'package:RandomTierList/domain/entities/playlist.dart';
-import 'package:RandomTierList/domain/usecases/toggle_favorite_usecase.dart';
-import 'package:RandomTierList/domain/usecases/add_track_to_playlist_usecase.dart';
-import 'package:RandomTierList/domain/repositories/playlists_repository.dart';
-import 'package:RandomTierList/domain/repositories/tracks_repository.dart';
-import 'package:RandomTierList/di/dependency_injection.dart';
-import 'package:RandomTierList/home/domain/usecase/download_track_usecase.dart';
+import 'package:mumusic/core/audio/player_adapters.dart';
+import 'package:mumusic/core/audio/player_bar.dart' show formatDuration;
+import 'package:mumusic/core/audio/player_service.dart';
+import 'package:mumusic/core/audio/player_track.dart';
+import 'package:mumusic/core/global_widgets/panel_header.dart';
+import 'package:mumusic/home/domain/model/network_track_model.dart';
+import 'package:mumusic/home/domain/model/downloaded_track_model.dart';
+import 'package:mumusic/core/api/guest_tracks_api.dart';
+import 'package:mumusic/domain/entities/track.dart' as domain;
+import 'package:mumusic/domain/entities/playlist.dart';
+import 'package:mumusic/domain/usecases/toggle_favorite_usecase.dart';
+import 'package:mumusic/domain/usecases/add_track_to_playlist_usecase.dart';
+import 'package:mumusic/domain/repositories/playlists_repository.dart';
+import 'package:mumusic/domain/repositories/tracks_repository.dart';
+import 'package:mumusic/di/dependency_injection.dart';
+import 'package:mumusic/home/domain/usecase/download_track_usecase.dart';
 import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -53,7 +55,6 @@ class UniversalTrackDetailsScreen extends StatefulWidget {
 
 class _UniversalTrackDetailsScreenState
     extends State<UniversalTrackDetailsScreen> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
   final ToggleFavoriteUseCase _toggleFavoriteUseCase =
       DependencyInjection.toggleFavoriteUseCase;
   final AddTrackToPlaylistUseCase _addTrackToPlaylistUseCase =
@@ -67,12 +68,6 @@ class _UniversalTrackDetailsScreenState
 
   bool _isFavorite = false;
   bool _isDownloading = false;
-  bool _isPlaying = false;
-  Duration _position = Duration.zero;
-  Duration _duration = Duration.zero;
-  double _playbackSpeed = 1.0;
-  StreamSubscription<Duration>? _positionSubscription;
-  StreamSubscription<Duration?>? _durationSubscription;
 
   String get _trackName {
     if (widget.networkTrack != null) return widget.networkTrack!.trackName;
@@ -128,29 +123,7 @@ class _UniversalTrackDetailsScreenState
     super.initState();
     _isFavorite = widget.isFavorite;
     _checkFavoriteStatus();
-
-    _audioPlayer.playerStateStream.listen((state) {
-      if (!mounted) return;
-      setState(() {
-        _isPlaying = state.playing;
-      });
-    });
-
-    _positionSubscription = _audioPlayer.positionStream.listen((position) {
-      if (mounted) {
-        setState(() {
-          _position = position;
-        });
-      }
-    });
-
-    _durationSubscription = _audioPlayer.durationStream.listen((duration) {
-      if (mounted) {
-        setState(() {
-          _duration = duration ?? Duration.zero;
-        });
-      }
-    });
+    PlayerService.instance.addListener(_onPlayerChanged);
   }
 
   Future<void> _checkFavoriteStatus() async {
@@ -170,9 +143,7 @@ class _UniversalTrackDetailsScreenState
 
   @override
   void dispose() {
-    _positionSubscription?.cancel();
-    _durationSubscription?.cancel();
-    _audioPlayer.dispose();
+    PlayerService.instance.removeListener(_onPlayerChanged);
     super.dispose();
   }
 
@@ -249,57 +220,39 @@ class _UniversalTrackDetailsScreenState
     }
   }
 
+  void _onPlayerChanged() {
+    if (mounted) setState(() {});
+  }
+
+  PlayerTrack get _playerTrack {
+    if (widget.networkTrack != null) return widget.networkTrack!.toPlayerTrack();
+    if (widget.downloadedTrack != null) {
+      return widget.downloadedTrack!.toPlayerTrack();
+    }
+    return widget.guestTrack!.toPlayerTrack();
+  }
+
+  bool get _isCurrent => PlayerService.instance.isCurrent(_playerTrack.id);
+  bool get _isPlaying => PlayerService.instance.isPlayingTrack(_playerTrack.id);
+
   Future<void> _playTrack() async {
+    final player = PlayerService.instance;
+    final track = _playerTrack;
     try {
-      if (_isPlaying) {
-        await _audioPlayer.pause();
+      if (_isCurrent) {
+        await player.togglePlayPause();
         return;
       }
-
-      if (widget.networkTrack != null) {
-        final url = widget.networkTrack!.previewUrl;
-        if (url == null || url.isEmpty) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Превью для этого трека недоступно'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-          return;
-        }
-        await _audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(url)));
-      } else if (widget.downloadedTrack != null) {
-        await _audioPlayer.setAudioSource(
-          AudioSource.file(widget.downloadedTrack!.filePath),
+      if (!track.hasSource) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Превью для этого трека недоступно'),
+            duration: Duration(seconds: 2),
+          ),
         );
-      } else if (widget.guestTrack != null) {
-        String streamUrl;
-        if (widget.guestTrack!.streamUrl.isNotEmpty) {
-          streamUrl = widget.guestTrack!.streamUrl;
-        } else {
-          streamUrl = await GuestTracksApi.getStreamUrl(widget.guestTrack!.id);
-        }
-        final uri = Uri.parse(streamUrl);
-        if (uri.scheme != 'http' && uri.scheme != 'https') {
-          throw Exception('Неподдерживаемая схема URI: ${uri.scheme}');
-        }
-        await _audioPlayer.setAudioSource(
-          AudioSource.uri(uri, headers: {'accept': 'audio/mpeg'}),
-        );
+        return;
       }
-
-      await _audioPlayer.play();
-    } on PlatformException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ошибка воспроизведения: ${e.message ?? e.code}'),
-          duration: const Duration(seconds: 3),
-          backgroundColor: Colors.red,
-        ),
-      );
+      await player.playSingle(track);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -311,37 +264,8 @@ class _UniversalTrackDetailsScreenState
       );
     }
   }
-
-  void _changePlaybackSpeed() {
-    setState(() {
-      if (_playbackSpeed >= 2.0) {
-        _playbackSpeed = 0.5;
-      } else if (_playbackSpeed >= 1.5) {
-        _playbackSpeed = 2.0;
-      } else if (_playbackSpeed >= 1.0) {
-        _playbackSpeed = 1.5;
-      } else {
-        _playbackSpeed = 1.0;
-      }
-      _audioPlayer.setSpeed(_playbackSpeed);
-    });
-  }
-
-  void _seekTo(Duration position) {
-    _audioPlayer.seek(position);
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
-
   Future<void> _stopTrack() async {
-    await _audioPlayer.stop();
-    setState(() {
-      _position = Duration.zero;
-    });
+    if (_isCurrent) await PlayerService.instance.stop();
   }
 
   Future<void> _downloadTrack() async {
@@ -773,12 +697,12 @@ class _UniversalTrackDetailsScreenState
                         children: [
                           IconButton(
                             icon: Text(
-                              '${_playbackSpeed}x',
+                              '${PlayerService.instance.speed}x',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            onPressed: _changePlaybackSpeed,
+                            onPressed: PlayerService.instance.cycleSpeed,
                             tooltip: 'Скорость воспроизведения',
                           ),
                           const SizedBox(width: 8),
@@ -801,42 +725,41 @@ class _UniversalTrackDetailsScreenState
                           ),
                         ],
                       ),
-                      // Плеер с контролами
-                      if (_duration.inMilliseconds > 0 || _isPlaying) ...[
+                      // Прогресс берём из общего плеера, если играет этот трек
+                      if (_isCurrent) ...[
                         const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            Text(
-                              _formatDuration(_position),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontSize: 12,
-                              ),
-                            ),
-                            Expanded(
-                              child: Slider(
-                                value: _duration.inMilliseconds > 0
-                                    ? (_position.inMilliseconds.toDouble())
-                                        .clamp(0.0,
-                                            _duration.inMilliseconds.toDouble())
-                                    : 0.0,
-                                max: _duration.inMilliseconds > 0
-                                    ? _duration.inMilliseconds.toDouble()
-                                    : 1.0,
-                                onChanged: (value) {
-                                  _seekTo(
-                                      Duration(milliseconds: value.toInt()));
-                                },
-                              ),
-                            ),
-                            Text(
-                              _formatDuration(_duration),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                        ValueListenableBuilder<Duration>(
+                          valueListenable: PlayerService.instance.position,
+                          builder: (context, position, _) {
+                            final total = PlayerService.instance.duration;
+                            final max = total.inMilliseconds > 0
+                                ? total.inMilliseconds.toDouble()
+                                : 1.0;
+                            final labelStyle =
+                                theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontSize: 12,
+                            );
+                            return Row(
+                              children: [
+                                Text(formatDuration(position),
+                                    style: labelStyle),
+                                Expanded(
+                                  child: Slider(
+                                    value: position.inMilliseconds
+                                        .toDouble()
+                                        .clamp(0.0, max),
+                                    max: max,
+                                    onChanged: total.inMilliseconds > 0
+                                        ? (v) => PlayerService.instance.seek(
+                                            Duration(milliseconds: v.toInt()))
+                                        : null,
+                                  ),
+                                ),
+                                Text(formatDuration(total), style: labelStyle),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ],

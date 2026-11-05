@@ -13,7 +13,7 @@ router.post('/',
 
 router.get('/', authGuard, asyncHandler(TracksController.getUserTracks));
 
-router.get('/:id', asyncHandler(TracksController.getTrack));
+router.get('/:id', authGuard, asyncHandler(TracksController.getTrack));
 
 router.delete('/:id', authGuard, asyncHandler(TracksController.deleteTrack));
 

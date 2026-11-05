@@ -1,23 +1,24 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:RandomTierList/core/global_widgets/panel_header.dart';
-import 'package:RandomTierList/domain/entities/track.dart' as domain;
-import 'package:RandomTierList/domain/repositories/tracks_repository.dart'
+import 'package:mumusic/core/audio/player_adapters.dart';
+import 'package:mumusic/core/audio/player_service.dart';
+import 'package:mumusic/core/global_widgets/panel_header.dart';
+import 'package:mumusic/domain/entities/track.dart' as domain;
+import 'package:mumusic/domain/repositories/tracks_repository.dart'
     as domain_repo;
-import 'package:RandomTierList/domain/usecases/get_favorites_usecase.dart';
-import 'package:RandomTierList/domain/usecases/toggle_favorite_usecase.dart';
-import 'package:RandomTierList/di/dependency_injection.dart';
-import 'package:RandomTierList/home/domain/model/network_track_model.dart';
-import 'package:RandomTierList/home/domain/repository/i_network_repository.dart';
-import 'package:RandomTierList/home/domain/repository/network_repository_impl.dart';
-import 'package:RandomTierList/home/domain/usecase/download_track_usecase.dart';
-import 'package:RandomTierList/home/domain/usecase/search_network_tracks_usecase.dart';
-import 'package:RandomTierList/home/presentation/providers/network_provider.dart';
-import 'package:RandomTierList/home/presentation/state/network_model.dart';
-import 'package:RandomTierList/home/presentation/widgets/network_track_item.dart';
-import 'package:RandomTierList/home/presentation/screens/universal_track_details_screen.dart';
+import 'package:mumusic/domain/usecases/get_favorites_usecase.dart';
+import 'package:mumusic/domain/usecases/toggle_favorite_usecase.dart';
+import 'package:mumusic/di/dependency_injection.dart';
+import 'package:mumusic/home/domain/model/network_track_model.dart';
+import 'package:mumusic/home/domain/repository/i_network_repository.dart';
+import 'package:mumusic/home/domain/repository/network_repository_impl.dart';
+import 'package:mumusic/home/domain/usecase/download_track_usecase.dart';
+import 'package:mumusic/home/domain/usecase/search_network_tracks_usecase.dart';
+import 'package:mumusic/home/presentation/providers/network_provider.dart';
+import 'package:mumusic/home/presentation/state/network_model.dart';
+import 'package:mumusic/home/presentation/widgets/network_track_item.dart';
+import 'package:mumusic/home/presentation/screens/universal_track_details_screen.dart';
 
 class NetworkScreen extends StatefulWidget {
   const NetworkScreen({super.key});
@@ -28,11 +29,8 @@ class NetworkScreen extends StatefulWidget {
 
 class _NetworkScreenState extends State<NetworkScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final AudioPlayer _audioPlayer = AudioPlayer();
   final ScrollController _scrollController = ScrollController();
   Timer? _searchDebounceTimer;
-  StreamSubscription<Duration>? _positionSubscription;
-  StreamSubscription<Duration?>? _durationSubscription;
 
   late final NetworkModel _model;
   late final SearchNetworkTracksUseCase _searchUseCase;
@@ -52,10 +50,6 @@ class _NetworkScreenState extends State<NetworkScreen> {
   final domain_repo.TracksRepository _tracksRepository =
       DependencyInjection.tracksRepository;
 
-  Duration _position = Duration.zero;
-  Duration _duration = Duration.zero;
-  double _playbackSpeed = 1.0;
-
   @override
   void initState() {
     super.initState();
@@ -69,38 +63,15 @@ class _NetworkScreenState extends State<NetworkScreen> {
     // Загружаем историю и избранное
     _loadSearchHistory();
     _loadFavorites();
-
-    _audioPlayer.playerStateStream.listen((state) {
-      if (mounted) {
-        _model.setPlaying(state.playing);
-      }
-    });
-
-    _positionSubscription = _audioPlayer.positionStream.listen((position) {
-      if (mounted) {
-        setState(() {
-          _position = position;
-        });
-      }
-    });
-
-    _durationSubscription = _audioPlayer.durationStream.listen((duration) {
-      if (mounted) {
-        setState(() {
-          _duration = duration ?? Duration.zero;
-        });
-      }
-    });
+    PlayerService.instance.addListener(_onPlayerChanged);
   }
 
   @override
   void dispose() {
     _searchDebounceTimer?.cancel();
-    _positionSubscription?.cancel();
-    _durationSubscription?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
-    _audioPlayer.dispose();
+    PlayerService.instance.removeListener(_onPlayerChanged);
     _model.dispose();
     super.dispose();
   }
@@ -217,59 +188,15 @@ class _NetworkScreenState extends State<NetworkScreen> {
     }
   }
 
-  Future<void> _playTrack(NetworkTrack track) async {
-    try {
-      final trackId = track.uniqueId;
-
-      if (_model.currentlyPlayingId == trackId && _model.isPlaying) {
-        await _audioPlayer.pause();
-        return;
-      }
-
-      final previewUrl = _repository.getPreviewUrl(track);
-      if (previewUrl == null || previewUrl.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Превью для этого трека недоступно'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-        return;
-      }
-
-      if (_model.currentlyPlayingId != null) {
-        await _audioPlayer.stop();
-      }
-
-      await _audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(previewUrl)));
-      await _audioPlayer.play();
-
-      _model.setCurrentlyPlaying(trackId);
-    } on PlatformException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка воспроизведения: ${e.message ?? e.code}'),
-            duration: const Duration(seconds: 3),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка воспроизведения: $e'),
-            duration: const Duration(seconds: 3),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+  void _onPlayerChanged() {
+    if (mounted) setState(() {});
   }
 
+  Future<void> _playTrack(NetworkTrack track) => playFromList(
+        context,
+        _model.tracks.map((t) => t.toPlayerTrack()).toList(),
+        track.toPlayerTrack().id,
+      );
   Future<void> _downloadTrack(NetworkTrack track) async {
     final trackId = track.uniqueId;
     _model.setDownloading(trackId, true);
@@ -298,37 +225,6 @@ class _NetworkScreenState extends State<NetworkScreen> {
     } finally {
       _model.setDownloading(trackId, false);
     }
-  }
-
-  Future<void> _stopTrack() async {
-    await _audioPlayer.stop();
-    _model.setCurrentlyPlaying(null);
-    _model.setPlaying(false);
-  }
-
-  void _changePlaybackSpeed() {
-    setState(() {
-      if (_playbackSpeed >= 2.0) {
-        _playbackSpeed = 0.5;
-      } else if (_playbackSpeed >= 1.5) {
-        _playbackSpeed = 2.0;
-      } else if (_playbackSpeed >= 1.0) {
-        _playbackSpeed = 1.5;
-      } else {
-        _playbackSpeed = 1.0;
-      }
-      _audioPlayer.setSpeed(_playbackSpeed);
-    });
-  }
-
-  void _seekTo(Duration position) {
-    _audioPlayer.seek(position);
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -502,8 +398,9 @@ class _NetworkScreenState extends State<NetworkScreen> {
                         itemBuilder: (context, index) {
                           final track = _model.tracks[index];
                           final trackId = track.uniqueId;
+                          final playerId = track.toPlayerTrack().id;
                           final isCurrentlyPlaying =
-                              _model.currentlyPlayingId == trackId;
+                              PlayerService.instance.isCurrent(playerId);
                           final favoriteId =
                               (track.trackId ?? track.uniqueId.hashCode)
                                   .toString();
@@ -511,7 +408,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
                           return NetworkTrackItem(
                             track: track,
                             isCurrentlyPlaying: isCurrentlyPlaying,
-                            isPlaying: isCurrentlyPlaying && _model.isPlaying,
+                            isPlaying: PlayerService.instance.isPlayingTrack(playerId),
                             isDownloading: _model.isDownloading(trackId),
                             isFavorite: _favoriteIds.contains(favoriteId),
                             onPlay: () => _playTrack(track),
@@ -525,132 +422,6 @@ class _NetworkScreenState extends State<NetworkScreen> {
                   ),
                 ),
               ),
-              if (_model.currentlyPlayingId != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    border: Border(
-                      top: BorderSide(
-                        color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _model.tracks
-                                      .firstWhere((t) =>
-                                          t.uniqueId == _model.currentlyPlayingId)
-                                      .trackName,
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  _model.tracks
-                                      .firstWhere((t) =>
-                                          t.uniqueId == _model.currentlyPlayingId)
-                                      .artistName,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Text(
-                            _formatDuration(_position),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                              fontSize: 12,
-                            ),
-                          ),
-                          Expanded(
-                            child: Slider(
-                              value: _duration.inMilliseconds > 0
-                                  ? (_position.inMilliseconds.toDouble())
-                                      .clamp(0.0, _duration.inMilliseconds.toDouble())
-                                  : 0.0,
-                              max: _duration.inMilliseconds > 0
-                                  ? _duration.inMilliseconds.toDouble()
-                                  : 1.0,
-                              onChanged: (value) {
-                                _seekTo(Duration(milliseconds: value.toInt()));
-                              },
-                            ),
-                          ),
-                          Text(
-                            _formatDuration(_duration),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          IconButton(
-                            icon: Text(
-                              '${_playbackSpeed}x',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            onPressed: _changePlaybackSpeed,
-                            tooltip: 'Скорость воспроизведения',
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            iconSize: 48,
-                            icon: Icon(
-                              _model.isPlaying
-                                  ? Icons.pause_circle_filled
-                                  : Icons.play_circle_filled,
-                              color: theme.colorScheme.primary,
-                            ),
-                            onPressed: () {
-                              if (_model.isPlaying) {
-                                _audioPlayer.pause();
-                              } else {
-                                _audioPlayer.play();
-                              }
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.stop),
-                            onPressed: _stopTrack,
-                            tooltip: 'Остановить',
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
             ],
           ),
         ),

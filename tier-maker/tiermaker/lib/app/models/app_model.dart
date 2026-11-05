@@ -1,5 +1,6 @@
-import 'package:RandomTierList/core/app_database/app_database.dart';
+import 'package:mumusic/core/app_database/app_database.dart';
 import 'package:flutter/material.dart';
+import 'package:mumusic/theme/app_palette.dart';
 
 class AppModel extends ChangeNotifier {
   bool isLoading = true;
@@ -7,6 +8,7 @@ class AppModel extends ChangeNotifier {
   bool _isGuest = true;
   String? _userEmail;
   String? _userNickname;
+  AppPalette _palette = AppPalette.classicLight;
 
   AppModel() {
     init();
@@ -29,6 +31,9 @@ class AppModel extends ChangeNotifier {
 
   // Геттер для проверки темной темы
   bool get isDarkTheme => themeCode == 'dr';
+
+  /// Текущая цветовая схема
+  AppPalette get palette => _palette;
 
   // Геттеры для авторизации
   bool get isGuest => _isGuest;
@@ -121,6 +126,17 @@ class AppModel extends ChangeNotifier {
   Future<void> getCurrentTheme() async {
     final value = await AppDatabase.getAppTheme();
     _appState = value;
+    // Если схема ещё не выбиралась — берём классическую по старому флагу lt/dr
+    _palette = AppPalette.fromJson(await AppDatabase.getColorScheme()) ??
+        (isDarkTheme ? AppPalette.classicDark : AppPalette.classicLight);
+    notifyListeners();
+  }
+
+  Future<void> setPalette(AppPalette palette) async {
+    _palette = palette;
+    await AppDatabase.setColorScheme(palette.toJson());
+    // Держим флаг lt/dr в appState согласованным со схемой
+    await setTheme(palette.isDark ? 'dr' : 'lt');
     notifyListeners();
   }
 
@@ -133,7 +149,7 @@ class AppModel extends ChangeNotifier {
   // Удобные методы для изменения отдельных частей состояния
   Future<void> setTheme(String themeCode) async {
     // themeCode должен быть 'lt' или 'dr'
-    if (themeCode.length == 2) {
+    if (themeCode.length == 2 && _appState.length >= 2) {
       _appState = themeCode + _appState.substring(2);
       await AppDatabase.setAppTheme(_appState);
       notifyListeners();

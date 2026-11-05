@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:RandomTierList/core/global_widgets/panel_header.dart';
-import 'package:RandomTierList/settings/presentation/providers/settings_provider.dart';
-import 'package:RandomTierList/theme/theme.dart';
-import 'package:RandomTierList/settings/presentation/widgets/setting_support_functions.dart';
-import 'package:RandomTierList/core/services/upload_service.dart';
-import 'package:RandomTierList/core/services/download_service.dart';
-import 'package:RandomTierList/home/domain/repository/downloaded_tracks_repository_impl.dart';
-import 'package:RandomTierList/home/domain/usecase/get_downloaded_tracks_usecase.dart';
-import 'package:RandomTierList/home/domain/model/downloaded_track_model.dart';
+import 'package:mumusic/core/global_widgets/panel_header.dart';
+import 'package:mumusic/settings/presentation/providers/settings_provider.dart';
+import 'package:mumusic/settings/presentation/screens/theme_settings_screen.dart';
+import 'package:mumusic/settings/presentation/widgets/setting_support_functions.dart';
+import 'package:mumusic/core/services/upload_service.dart';
+import 'package:mumusic/core/services/download_service.dart';
+import 'package:mumusic/home/domain/repository/downloaded_tracks_repository_impl.dart';
+import 'package:mumusic/home/domain/usecase/get_downloaded_tracks_usecase.dart';
+import 'package:mumusic/home/domain/model/downloaded_track_model.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -29,79 +29,71 @@ class SettingsScreen extends StatelessWidget {
               textColor: theme.colorScheme.primary,
               onBackClick: () => context.pop(),
             ),
+            // Список прокручивается: раньше здесь был Column, и когда в диалоге
+            // настройки сервера открывалась клавиатура, экран сжимался
+            // и появлялась ошибка «BOTTOM OVERFLOWED BY … PIXELS»
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 24),
-                child: Column(
-                  children: [
-                    SettingsItem(
-                      text: settingsModel.appModel.isDarkTheme
-                          ? 'Темная тема'
-                          : 'Светлая тема',
-                      trailing: Switch(
-                        value: settingsModel.appModel.isDarkTheme,
-                        onChanged: (value) {
-                          settingsModel.setTheme(value);
-                        },
-                        thumbColor: MaterialStateProperty.resolveWith<Color>(
-                          (Set<MaterialState> states) {
-                            if (states.contains(MaterialState.selected)) {
-                              return settingsModel.appModel.isDarkTheme
-                                  ? AppTheme.primaryColorLight
-                                  : AppTheme.primaryColor;
-                            }
-                            return Colors.grey.shade400;
-                          },
+              child: ListView(
+                padding: const EdgeInsets.only(top: 24, bottom: 16),
+                children: [
+                  SettingsItem(
+                    text: 'Цветовая схема',
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          settingsModel.appModel.palette.name,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
-                        trackColor: MaterialStateProperty.resolveWith<Color>(
-                          (Set<MaterialState> states) {
-                            if (states.contains(MaterialState.selected)) {
-                              return (settingsModel.appModel.isDarkTheme
-                                      ? AppTheme.primaryColorLight
-                                      : AppTheme.primaryColor)
-                                  .withOpacity(0.5);
-                            }
-                            return Colors.grey.withOpacity(0.3);
-                          },
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.palette_outlined,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ],
+                    ),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const ThemeSettingsScreen(),
                       ),
                     ),
+                  ),
+                  SettingsItem(
+                    text: 'Поделиться приложением',
+                    icon: Icons.share,
+                    onTap: () => shareApp(context),
+                  ),
+                  SettingsItem(
+                    text: 'Связаться с поддержкой',
+                    icon: Icons.support_agent,
+                    onTap: () => contactSupport(context),
+                  ),
+                  SettingsItem(
+                    text: 'Пользовательское соглашение',
+                    icon: Icons.arrow_forward_ios,
+                    onTap: () => _showUserAgreement(context),
+                  ),
+                  SettingsItem(
+                    text: 'Настройка API сервера',
+                    icon: Icons.settings_ethernet,
+                    onTap: () => showApiUrlSettings(context),
+                  ),
+                  SettingsItem(
+                    text: 'Тест подключения к бэкенду',
+                    icon: Icons.cloud_sync,
+                    onTap: () => testBackendConnection(context),
+                  ),
+                  if (!settingsModel.appModel.isGuest) ...[
+                    const Divider(),
                     SettingsItem(
-                      text: 'Поделиться приложением',
-                      icon: Icons.share,
-                      onTap: () => shareApp(context),
+                      text: 'Синхронизация данных',
+                      icon: Icons.cloud_upload,
+                      onTap: () => _showSyncDialog(context),
                     ),
-                    SettingsItem(
-                      text: 'Связаться с поддержкой',
-                      icon: Icons.support_agent,
-                      onTap: () => contactSupport(context),
-                    ),
-                    SettingsItem(
-                      text: 'Пользовательское соглашение',
-                      icon: Icons.arrow_forward_ios,
-                      onTap: () => _showUserAgreement(context),
-                    ),
-                    SettingsItem(
-                      text: 'Настройка API сервера',
-                      icon: Icons.settings_ethernet,
-                      onTap: () => showApiUrlSettings(context),
-                    ),
-                    SettingsItem(
-                      text: 'Тест подключения к бэкенду',
-                      icon: Icons.cloud_sync,
-                      onTap: () => testBackendConnection(context),
-                    ),
-                    if (!settingsModel.appModel.isGuest) ...[
-                      const Divider(),
-                      SettingsItem(
-                        text: 'Синхронизация данных',
-                        icon: Icons.cloud_upload,
-                        onTap: () => _showSyncDialog(context),
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
             ),
           ],
@@ -452,17 +444,20 @@ class SettingsItem extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
-        height: 61,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        constraints: const BoxConstraints(minHeight: 61),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              text,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.primary,
+            // Expanded, чтобы длинный текст переносился, а не вылезал за край
+            Expanded(
+              child: Text(
+                text,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
               ),
             ),
+            const SizedBox(width: 12),
             if (trailing != null)
               trailing!
             else if (icon != null)

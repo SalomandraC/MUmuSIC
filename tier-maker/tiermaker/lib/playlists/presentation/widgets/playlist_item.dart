@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:RandomTierList/domain/entities/playlist.dart';
+import 'package:mumusic/domain/entities/playlist.dart';
 
 class PlaylistItem extends StatelessWidget {
   final PlaylistEntity playlist;

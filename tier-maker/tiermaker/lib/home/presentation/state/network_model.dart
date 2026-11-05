@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:RandomTierList/home/domain/model/network_track_model.dart';
+import 'package:mumusic/home/domain/model/network_track_model.dart';
 
 /// Модель состояния для экрана сети
 class NetworkModel extends ChangeNotifier {

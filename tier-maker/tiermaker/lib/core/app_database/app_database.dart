@@ -12,6 +12,7 @@ class AppDatabase {
   static const String _accessTokenKey = 'accessToken';
   static const String _refreshTokenKey = 'refreshToken';
   static const String _userIdKey = 'userId';
+  static const String _colorSchemeKey = 'colorScheme';
   static Box<String>? _box;
 
   /// Проверяет и открывает box, если он еще не открыт
@@ -42,6 +43,17 @@ class AppDatabase {
   static Future<void> setAppTheme(String appState) async {
     final box = await _ensureBox();
     await box.put(_themeKey, appState);
+  }
+
+  /// Цветовая схема в JSON (см. AppPalette.toJson)
+  static Future<String?> getColorScheme() async {
+    final box = await _ensureBox();
+    return box.get(_colorSchemeKey);
+  }
+
+  static Future<void> setColorScheme(String json) async {
+    final box = await _ensureBox();
+    await box.put(_colorSchemeKey, json);
   }
 
   static Future<bool> getIsGuest() async {

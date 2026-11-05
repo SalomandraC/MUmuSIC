@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:RandomTierList/settings/domain/model/settings_model.dart';
+import 'package:mumusic/settings/domain/model/settings_model.dart';
 
 /// Provider для SettingsModel
 class SettingsProvider extends InheritedNotifier<SettingsModel> {

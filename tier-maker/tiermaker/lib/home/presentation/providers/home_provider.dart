@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:RandomTierList/home/domain/model/home_model.dart';
+import 'package:mumusic/home/domain/model/home_model.dart';
 
 class HomeProvider extends InheritedNotifier<HomeModel> {
   const HomeProvider({

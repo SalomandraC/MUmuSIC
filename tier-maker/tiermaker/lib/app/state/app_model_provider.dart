@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:RandomTierList/app/models/app_model.dart';
+import 'package:mumusic/app/models/app_model.dart';
 
 class AppModelProvider extends InheritedNotifier<AppModel> {
   const AppModelProvider({

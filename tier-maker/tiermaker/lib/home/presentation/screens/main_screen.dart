@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:RandomTierList/app/app_routes.dart';
-import 'package:RandomTierList/app/state/app_model_provider.dart';
-import 'package:RandomTierList/core/global_widgets/panel_header.dart';
+import 'package:mumusic/app/app_routes.dart';
+import 'package:mumusic/app/state/app_model_provider.dart';
+import 'package:mumusic/core/global_widgets/panel_header.dart';
 
 class MainScreen extends StatelessWidget {
   const MainScreen({super.key});

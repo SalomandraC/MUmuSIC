@@ -3,9 +3,9 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart';
-import 'package:RandomTierList/data/datasources/remote/itunes_remote_datasource.dart';
-import 'package:RandomTierList/home/domain/model/network_track_model.dart';
-import 'package:RandomTierList/home/domain/repository/i_network_repository.dart';
+import 'package:mumusic/data/datasources/remote/itunes_remote_datasource.dart';
+import 'package:mumusic/home/domain/model/network_track_model.dart';
+import 'package:mumusic/home/domain/repository/i_network_repository.dart';
 
 /// Реализация репозитория для работы с треками из сети
 class NetworkRepositoryImpl implements INetworkRepository {

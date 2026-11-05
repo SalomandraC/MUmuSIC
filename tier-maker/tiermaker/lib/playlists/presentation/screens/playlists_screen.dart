@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:RandomTierList/core/global_widgets/panel_header.dart';
-import 'package:RandomTierList/domain/entities/playlist.dart';
-import 'package:RandomTierList/domain/repositories/playlists_repository.dart';
-import 'package:RandomTierList/domain/usecases/create_playlist_usecase.dart';
-import 'package:RandomTierList/di/dependency_injection.dart';
-import 'package:RandomTierList/playlists/presentation/widgets/playlist_item.dart';
-import 'package:RandomTierList/app/app_routes.dart';
+import 'package:mumusic/core/global_widgets/panel_header.dart';
+import 'package:mumusic/domain/entities/playlist.dart';
+import 'package:mumusic/domain/repositories/playlists_repository.dart';
+import 'package:mumusic/domain/usecases/create_playlist_usecase.dart';
+import 'package:mumusic/di/dependency_injection.dart';
+import 'package:mumusic/playlists/presentation/widgets/playlist_item.dart';
+import 'package:mumusic/app/app_routes.dart';
 
 class PlaylistsScreen extends StatefulWidget {
   const PlaylistsScreen({super.key});

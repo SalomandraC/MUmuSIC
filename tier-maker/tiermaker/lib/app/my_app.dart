@@ -1,23 +1,24 @@
-import 'package:RandomTierList/app/state/app_model_provider.dart';
-import 'package:RandomTierList/core/navigation/app_router.dart';
-import 'package:RandomTierList/theme/theme.dart';
+import 'package:mumusic/app/state/app_model_provider.dart';
+import 'package:mumusic/core/navigation/app_router.dart';
+import 'package:mumusic/theme/theme.dart';
+import 'package:mumusic/core/audio/player_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:RandomTierList/app/models/app_model.dart';
+import 'package:mumusic/app/models/app_model.dart';
 import 'package:go_router/go_router.dart';
 
-class TierMakerApp extends StatefulWidget {
+class MuMusicApp extends StatefulWidget {
   final AppModel appModel;
 
-  const TierMakerApp({
+  const MuMusicApp({
     super.key,
     required this.appModel,
   });
 
   @override
-  State<TierMakerApp> createState() => _TierMakerAppState();
+  State<MuMusicApp> createState() => _MuMusicAppState();
 }
 
-class _TierMakerAppState extends State<TierMakerApp> {
+class _MuMusicAppState extends State<MuMusicApp> {
   late final GoRouter _router;
 
   @override
@@ -38,28 +39,17 @@ class _TierMakerAppState extends State<TierMakerApp> {
             listenable: model,
             builder: (context, child) {
               return MaterialApp.router(
-                title: 'Tier Maker',
-                theme: AppTheme.ligthTheme,
-                darkTheme: AppTheme.darkTheme,
-                themeMode: _themeModeFromString(model.themeCode),
+                title: 'MuMuSIC',
+                theme: AppTheme.fromPalette(model.palette),
                 locale: Locale(model.languageCode),
                 routerConfig: _router,
+                // Плашка плеера одна на всё приложение и видна на любом экране
+                builder: (context, child) => PlayerBarHost(child: child),
               );
             },
           );
         },
       ),
     );
-  }
-}
-
-ThemeMode _themeModeFromString(String code) {
-  switch (code) {
-    case 'dr':
-      return ThemeMode.dark;
-    case 'lt':
-      return ThemeMode.light;
-    default:
-      return ThemeMode.system;
   }
 }

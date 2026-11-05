@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:RandomTierList/core/api/top_chart_api.dart';
-import 'package:RandomTierList/core/api/guest_tracks_api.dart';
-import 'package:RandomTierList/core/global_widgets/panel_header.dart';
-import 'package:RandomTierList/home/presentation/screens/universal_track_details_screen.dart';
+import 'package:mumusic/core/audio/player_adapters.dart';
+import 'package:mumusic/core/audio/player_service.dart';
+import 'package:mumusic/core/audio/player_track.dart';
+import 'package:mumusic/core/api/top_chart_api.dart';
+import 'package:mumusic/core/api/guest_tracks_api.dart';
+import 'package:mumusic/core/global_widgets/panel_header.dart';
+import 'package:mumusic/home/presentation/screens/universal_track_details_screen.dart';
 
 class TopChartsScreen extends StatefulWidget {
   const TopChartsScreen({super.key});
@@ -15,55 +16,22 @@ class TopChartsScreen extends StatefulWidget {
 }
 
 class _TopChartsScreenState extends State<TopChartsScreen> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
   final ScrollController _scrollController = ScrollController();
   List<TopChart> _tracks = [];
   bool _isLoading = true;
   String? _errorMessage;
-  int? _currentlyPlayingId;
-  bool _isPlaying = false;
-  double _playbackSpeed = 1.0;
-  Duration _position = Duration.zero;
-  Duration _duration = Duration.zero;
-  StreamSubscription<Duration>? _positionSubscription;
-  StreamSubscription<Duration?>? _durationSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadTracks();
-
-    _audioPlayer.playerStateStream.listen((state) {
-      if (mounted) {
-        setState(() {
-          _isPlaying = state.playing;
-        });
-      }
-    });
-
-    _positionSubscription = _audioPlayer.positionStream.listen((position) {
-      if (mounted) {
-        setState(() {
-          _position = position;
-        });
-      }
-    });
-
-    _durationSubscription = _audioPlayer.durationStream.listen((duration) {
-      if (mounted) {
-        setState(() {
-          _duration = duration ?? Duration.zero;
-        });
-      }
-    });
+    PlayerService.instance.addListener(_onPlayerChanged);
   }
 
   @override
   void dispose() {
-    _positionSubscription?.cancel();
-    _durationSubscription?.cancel();
     _scrollController.dispose();
-    _audioPlayer.dispose();
+    PlayerService.instance.removeListener(_onPlayerChanged);
     super.dispose();
   }
 
@@ -87,128 +55,36 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
     }
   }
 
-  Future<void> _playTrack(TopChart track) async {
-    try {
-      if (_currentlyPlayingId == track.id && _isPlaying) {
-        await _audioPlayer.pause();
-      } else {
-        if (_currentlyPlayingId != null) {
-          await _audioPlayer.stop();
-        }
-
-        String streamUrl;
-        if (track.streamUrl.isNotEmpty) {
-          streamUrl = track.streamUrl;
-        } else {
-          streamUrl = await TopChartApi.getTopChartStreamUrl(track.id);
-        }
-
-        if (!streamUrl.startsWith('http')) {
-          final base = await TopChartApi.getBaseUrl();
-          streamUrl = base + (streamUrl.startsWith('/') ? '' : '/') + streamUrl;
-        }
-
-        final uri = Uri.parse(streamUrl);
-        if (uri.scheme != 'http' && uri.scheme != 'https') {
-          throw Exception('Неподдерживаемая схема URI: ${uri.scheme}');
-        }
-
-        final audioSource = AudioSource.uri(
-          uri,
-          headers: {'accept': 'audio/mpeg'},
-        );
-
-        await _audioPlayer.setAudioSource(audioSource);
-
-        int attempts = 0;
-        const maxAttempts = 20;
-        bool isReady = false;
-
-        while (attempts < maxAttempts) {
-          final state = _audioPlayer.playerState;
-          if (state.processingState == ProcessingState.ready) {
-            isReady = true;
-            break;
-          }
-          if (attempts > 5 && state.processingState == ProcessingState.idle) {
-            throw Exception('Плеер не смог загрузить источник');
-          }
-          await Future.delayed(const Duration(milliseconds: 200));
-          attempts++;
-        }
-
-        if (!isReady &&
-            _audioPlayer.playerState.processingState != ProcessingState.ready) {
-          throw Exception('Плеер не готов к воспроизведению');
-        }
-
-        await _audioPlayer.play();
-        await Future.delayed(const Duration(milliseconds: 1000));
-
-        setState(() {
-          _currentlyPlayingId = track.id;
-        });
-      }
-    } on PlatformException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка воспроизведения: ${e.message ?? e.code}'),
-            duration: const Duration(seconds: 5),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка воспроизведения: $e'),
-            duration: const Duration(seconds: 5),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+  void _onPlayerChanged() {
+    if (mounted) setState(() {});
   }
 
-  Future<void> _stopTrack() async {
-    await _audioPlayer.stop();
-    setState(() {
-      _currentlyPlayingId = null;
-      _isPlaying = false;
-    });
-  }
+  PlayerTrack _toPlayerTrack(TopChart track) => PlayerTrack(
+        id: 'chart:${track.id}',
+        title: track.title,
+        artist: track.artist,
+        resolveSource: () async {
+          var streamUrl = track.streamUrl.isNotEmpty
+              ? track.streamUrl
+              : await TopChartApi.getTopChartStreamUrl(track.id);
+          if (!streamUrl.startsWith('http')) {
+            final base = await TopChartApi.getBaseUrl();
+            streamUrl =
+                base + (streamUrl.startsWith('/') ? '' : '/') + streamUrl;
+          }
+          return streamUrl;
+        },
+      );
 
+  Future<void> _playTrack(TopChart track) => playFromList(
+        context,
+        _tracks.map(_toPlayerTrack).toList(),
+        _toPlayerTrack(track).id,
+      );
   String _formatDuration(int seconds) {
     final minutes = seconds ~/ 60;
     final secs = seconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
-  }
-
-  String _formatDurationFromDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
-
-  void _changePlaybackSpeed() {
-    setState(() {
-      if (_playbackSpeed >= 2.0) {
-        _playbackSpeed = 0.5;
-      } else if (_playbackSpeed >= 1.5) {
-        _playbackSpeed = 2.0;
-      } else if (_playbackSpeed >= 1.0) {
-        _playbackSpeed = 1.5;
-      } else {
-        _playbackSpeed = 1.0;
-      }
-      _audioPlayer.setSpeed(_playbackSpeed);
-    });
-  }
-
-  void _seekTo(Duration position) {
-    _audioPlayer.seek(position);
   }
 
   Future<void> _openTrackDetails(TopChart track) async {
@@ -316,8 +192,9 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
                                 itemCount: _tracks.length,
                                 itemBuilder: (context, index) {
                                   final track = _tracks[index];
+                                  final playerId = _toPlayerTrack(track).id;
                                   final isCurrentlyPlaying =
-                                      _currentlyPlayingId == track.id;
+                                      PlayerService.instance.isCurrent(playerId);
                                   final rank = index + 1;
 
                                   return GestureDetector(
@@ -352,7 +229,7 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
                                             const SizedBox(width: 8),
                                             IconButton(
                                               icon: Icon(
-                                                isCurrentlyPlaying && _isPlaying
+                                                PlayerService.instance.isPlayingTrack(playerId)
                                                     ? Icons.pause_circle_filled
                                                     : Icons.play_circle_filled,
                                                 color: isCurrentlyPlaying
@@ -438,130 +315,6 @@ class _TopChartsScreenState extends State<TopChartsScreen> {
                               ),
               ),
             ),
-            if (_currentlyPlayingId != null)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  border: Border(
-                    top: BorderSide(
-                      color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _tracks
-                                    .firstWhere(
-                                        (t) => t.id == _currentlyPlayingId)
-                                    .title,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                _tracks
-                                    .firstWhere(
-                                        (t) => t.id == _currentlyPlayingId)
-                                    .artist,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Text(
-                          _formatDurationFromDuration(_position),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 12,
-                          ),
-                        ),
-                        Expanded(
-                          child: Slider(
-                            value: _duration.inMilliseconds > 0
-                                ? (_position.inMilliseconds.toDouble()).clamp(
-                                    0.0, _duration.inMilliseconds.toDouble())
-                                : 0.0,
-                            max: _duration.inMilliseconds > 0
-                                ? _duration.inMilliseconds.toDouble()
-                                : 1.0,
-                            onChanged: (value) {
-                              _seekTo(Duration(milliseconds: value.toInt()));
-                            },
-                          ),
-                        ),
-                        Text(
-                          _formatDurationFromDuration(_duration),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          icon: Text(
-                            '${_playbackSpeed}x',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          onPressed: _changePlaybackSpeed,
-                          tooltip: 'Скорость воспроизведения',
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          iconSize: 48,
-                          icon: Icon(
-                            _isPlaying
-                                ? Icons.pause_circle_filled
-                                : Icons.play_circle_filled,
-                            color: theme.colorScheme.primary,
-                          ),
-                          onPressed: () {
-                            if (_isPlaying) {
-                              _audioPlayer.pause();
-                            } else {
-                              _audioPlayer.play();
-                            }
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.stop),
-                          onPressed: _stopTrack,
-                          tooltip: 'Остановить',
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
           ],
         ),
       ),

@@ -1,5 +1,5 @@
-import 'package:RandomTierList/home/domain/model/network_track_model.dart';
-import 'package:RandomTierList/home/domain/repository/i_network_repository.dart';
+import 'package:mumusic/home/domain/model/network_track_model.dart';
+import 'package:mumusic/home/domain/repository/i_network_repository.dart';
 
 /// Use case для скачивания трека
 class DownloadTrackUseCase {

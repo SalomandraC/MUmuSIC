@@ -7,11 +7,9 @@ export interface AuthenticatedRequest extends Request {
 }
 
 export const authGuard = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  console.log(`[AuthGuard] Checking auth for ${req.method} ${req.path}`);
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
-    console.log(`[AuthGuard] No Authorization header`);
     res.status(401).json({ error: 'Необходим заголовок Authorization' });
     return;
   }
@@ -19,7 +17,6 @@ export const authGuard = (req: AuthenticatedRequest, res: Response, next: NextFu
   const [, token] = authHeader.split(' ');
 
   if (!token) {
-    console.log(`[AuthGuard] No token in Authorization header`);
     res.status(401).json({ error: 'Не найден токен доступа' });
     return;
   }
@@ -27,10 +24,9 @@ export const authGuard = (req: AuthenticatedRequest, res: Response, next: NextFu
   try {
     const payload = verifyAccessToken(token);
     req.user = payload;
-    console.log(`[AuthGuard] Authenticated user: ${payload.sub}`);
     next();
   } catch (error: any) {
-    console.log(`[AuthGuard] Token verification failed:`, error);
+    req.log?.debug({ err: error }, 'Access-токен не прошёл проверку');
     
     if (error.name === 'TokenExpiredError') {
       res.status(401).json({ 

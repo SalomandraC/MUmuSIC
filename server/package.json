@@ -5,8 +5,9 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "ts-node server/index.ts"
+    "start": "node -e \"console.error('Старый сервер отключён: запускайте backend (cd ../backend && npm run dev). Папка storage используется backend до переноса в MinIO.');process.exit(1)\"",
+    "dev": "node -e \"console.error('Старый сервер отключён: запускайте backend (cd ../backend && npm run dev). Папка storage используется backend до переноса в MinIO.');process.exit(1)\"",
+    "legacy:dev": "ts-node server/index.ts"
   },
   "dependencies": {
     "@types/bcrypt": "^5.0.2",

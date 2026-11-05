@@ -9,7 +9,12 @@
     "dev": "ts-node server/index.ts",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "migrate": "ts-node server/db/migrate.ts up",
+    "migrate:status": "ts-node server/db/migrate.ts status",
+    "migrate:baseline": "ts-node server/db/migrate.ts baseline",
+    "migrate:new": "ts-node server/db/migrate.ts new",
+    "migrate:prod": "node dist/db/migrate.js up"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.81.1",
@@ -27,6 +32,8 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "pg": "^8.11.3",
+    "pino": "^9.14.0",
+    "pino-http": "^10.5.0",
     "postgres": "^3.4.5",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
@@ -40,7 +47,10 @@
     "@types/mime-types": "^2.1.4",
     "@types/morgan": "^1.9.10",
     "@types/multer": "^1.4.13",
+    "@types/supertest": "^6.0.3",
     "jest": "^30.2.0",
+    "pino-pretty": "^13.2.0",
+    "supertest": "^7.3.1",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.1",
     "typescript": "^5.3.3"

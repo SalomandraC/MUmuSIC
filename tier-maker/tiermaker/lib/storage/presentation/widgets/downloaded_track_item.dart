@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:RandomTierList/home/domain/model/downloaded_track_model.dart';
+import 'package:mumusic/home/domain/model/downloaded_track_model.dart';
 
 class DownloadedTrackItem extends StatelessWidget {
   final DownloadedTrack track;
