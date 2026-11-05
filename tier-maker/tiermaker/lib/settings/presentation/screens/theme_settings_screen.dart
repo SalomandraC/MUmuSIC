@@ -16,7 +16,6 @@ class ThemeSettingsScreen extends StatefulWidget {
 }
 
 class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
-  /// Черновик своей схемы; применяется сразу при каждом изменении
   AppPalette? _custom;
 
   AppModel get _appModel => AppModelProvider.of(context);
@@ -143,7 +142,8 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
                       ),
                       value: custom.isDark,
                       onChanged: (value) {
-                        setState(() => _custom = custom.copyWith(isDark: value));
+                        setState(
+                            () => _custom = custom.copyWith(isDark: value));
                         _apply(_custom!);
                       },
                     ),
@@ -255,7 +255,8 @@ class _PalettePreview extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: selected ? theme.colorScheme.secondary : Colors.transparent,
+              color:
+                  selected ? theme.colorScheme.secondary : Colors.transparent,
               width: 3,
             ),
           ),
@@ -314,8 +315,8 @@ class _PalettePreview extends StatelessWidget {
                             child: Container(
                               height: 4,
                               decoration: BoxDecoration(
-                                color: previewTheme
-                                    .sliderTheme.inactiveTrackColor,
+                                color:
+                                    previewTheme.sliderTheme.inactiveTrackColor,
                                 borderRadius: BorderRadius.circular(2),
                               ),
                               alignment: Alignment.centerLeft,

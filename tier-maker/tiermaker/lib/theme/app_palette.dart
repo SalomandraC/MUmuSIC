@@ -189,9 +189,10 @@ class AppPalette {
       other.isDark == isDark;
 
   @override
-  int get hashCode => Object.hash(id, background, surface, accent, text, isDark);
+  int get hashCode =>
+      Object.hash(id, background, surface, accent, text, isDark);
 }
 
-/// Чёрный или белый — что лучше читается на [color]
+/// Чёрный или белый — что лучше читается
 Color contrastOn(Color color) =>
     color.computeLuminance() > 0.45 ? Colors.black : Colors.white;

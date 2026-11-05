@@ -29,9 +29,6 @@ class SettingsScreen extends StatelessWidget {
               textColor: theme.colorScheme.primary,
               onBackClick: () => context.pop(),
             ),
-            // Список прокручивается: раньше здесь был Column, и когда в диалоге
-            // настройки сервера открывалась клавиатура, экран сжимался
-            // и появлялась ошибка «BOTTOM OVERFLOWED BY … PIXELS»
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.only(top: 24, bottom: 16),
@@ -47,11 +44,7 @@ class SettingsScreen extends StatelessWidget {
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.palette_outlined,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                        const SizedBox(width: 8)
                       ],
                     ),
                     onTap: () => Navigator.of(context).push(

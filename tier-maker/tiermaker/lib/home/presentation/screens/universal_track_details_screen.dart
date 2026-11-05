@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'package:audioplayers/audioplayers.dart' as ap;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:mumusic/core/app_database/track_metadata_store.dart';
 import 'package:mumusic/core/audio/player_adapters.dart';
 import 'package:mumusic/core/audio/player_bar.dart' show formatDuration;
 import 'package:mumusic/core/audio/player_service.dart';
@@ -69,7 +72,17 @@ class _UniversalTrackDetailsScreenState
   bool _isFavorite = false;
   bool _isDownloading = false;
 
+  /// Пользовательские правки (название, подпись, обложка)
+  TrackMetadata? _meta;
+
+  /// Длительность, прочитанная из самого файла/потока
+  Duration? _probedDuration;
+  bool _probingDuration = false;
+
+  String get _metaKey => _playerTrack.id;
+
   String get _trackName {
+    if (_meta?.title?.isNotEmpty ?? false) return _meta!.title!;
     if (widget.networkTrack != null) return widget.networkTrack!.trackName;
     if (widget.downloadedTrack != null)
       return widget.downloadedTrack!.trackName;
@@ -78,6 +91,7 @@ class _UniversalTrackDetailsScreenState
   }
 
   String get _artistName {
+    if (_meta?.artist?.isNotEmpty ?? false) return _meta!.artist!;
     if (widget.networkTrack != null) return widget.networkTrack!.artistName;
     if (widget.downloadedTrack != null)
       return widget.downloadedTrack!.artistName;
@@ -86,6 +100,14 @@ class _UniversalTrackDetailsScreenState
   }
 
   String get _durationString {
+    final playerDuration = PlayerService.instance.duration;
+    if (_isCurrent && playerDuration > Duration.zero) {
+      return formatDuration(playerDuration);
+    }
+    if (_probedDuration != null && _probedDuration! > Duration.zero) {
+      return formatDuration(_probedDuration!);
+    }
+    if (_probingDuration) return '…';
     if (widget.networkTrack != null) {
       final duration = widget.networkTrack!.formattedDuration;
       return duration.isNotEmpty ? duration : '0:00';
@@ -124,6 +146,182 @@ class _UniversalTrackDetailsScreenState
     _isFavorite = widget.isFavorite;
     _checkFavoriteStatus();
     PlayerService.instance.addListener(_onPlayerChanged);
+    _loadMeta();
+    _probeDuration();
+  }
+
+  Future<void> _loadMeta() async {
+    final meta = await TrackMetadataStore.get(_metaKey);
+    if (mounted && meta != null) setState(() => _meta = meta);
+  }
+
+  /// У скачанных треков длительность не хранится, поэтому читаем её
+  /// из файла (и у гостевых треков, если сервер её не прислал)
+  Future<void> _probeDuration() async {
+    ap.Source? source;
+    if (widget.downloadedTrack != null &&
+        (widget.downloadedTrack!.durationMillis ?? 0) <= 0) {
+      source = ap.DeviceFileSource(widget.downloadedTrack!.filePath);
+    } else if (widget.guestTrack != null && widget.guestTrack!.duration <= 0) {
+      final url = widget.guestTrack!.streamUrl.isNotEmpty
+          ? widget.guestTrack!.streamUrl
+          : widget.guestTrack!.url;
+      if (url.isNotEmpty) source = ap.UrlSource(url);
+    }
+    if (source == null) return;
+
+    _probingDuration = true; // вызывается из initState, build ещё впереди
+    final probe = ap.AudioPlayer();
+    try {
+      await probe.setReleaseMode(ap.ReleaseMode.stop);
+      await probe.setSource(source).timeout(const Duration(seconds: 10));
+      final d = await probe.getDuration();
+      if (mounted) setState(() => _probedDuration = d);
+    } catch (e) {
+      debugPrint('Не удалось получить длительность трека: $e');
+    } finally {
+      await probe.dispose();
+      if (mounted) setState(() => _probingDuration = false);
+    }
+  }
+
+  Future<void> _saveMeta(TrackMetadata meta) async {
+    try {
+      await TrackMetadataStore.put(_metaKey, meta);
+      if (!mounted) return;
+      setState(() => _meta = meta.isEmpty ? null : meta);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Не удалось сохранить: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _editInfo() async {
+    final titleController = TextEditingController(text: _trackName);
+    final artistController = TextEditingController(text: _artistName);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Изменить трек'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Название'),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: artistController,
+              decoration: const InputDecoration(labelText: 'Подпись'),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+          ],
+        ),
+        actions: [
+          if ((_meta?.title?.isNotEmpty ?? false) ||
+              (_meta?.artist?.isNotEmpty ?? false))
+            TextButton(
+              onPressed: () => Navigator.of(context).pop('reset'),
+              child: const Text('Сбросить'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop('save'),
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
+    final title = titleController.text.trim();
+    final artist = artistController.text.trim();
+    titleController.dispose();
+    artistController.dispose();
+    if (result == null) return;
+
+    if (result == 'reset') {
+      await _saveMeta(TrackMetadata(coverPath: _meta?.coverPath));
+    } else {
+      await _saveMeta(TrackMetadata(
+        title: title.isEmpty ? null : title,
+        artist: artist.isEmpty ? null : artist,
+        coverPath: _meta?.coverPath,
+      ));
+    }
+  }
+
+  Future<void> _changeCover() async {
+    final hasCustom = _meta?.coverPath != null;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Выбрать из галереи'),
+              onTap: () => Navigator.of(context).pop('pick'),
+            ),
+            if (hasCustom)
+              ListTile(
+                leading: const Icon(Icons.restore),
+                title: const Text('Вернуть исходную обложку'),
+                onTap: () => Navigator.of(context).pop('reset'),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (action == null) return;
+
+    if (action == 'reset') {
+      await _saveMeta(TrackMetadata(
+        title: _meta?.title,
+        artist: _meta?.artist,
+      ));
+      return;
+    }
+
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 90,
+      );
+      if (picked == null) return;
+      final docs = await getApplicationDocumentsDirectory();
+      final coversDir = Directory('${docs.path}/covers');
+      if (!await coversDir.exists()) await coversDir.create(recursive: true);
+      final dot = picked.path.lastIndexOf('.');
+      final ext = dot > 0 ? picked.path.substring(dot) : '.jpg';
+      final target =
+          '${coversDir.path}/${DateTime.now().millisecondsSinceEpoch}$ext';
+      await File(picked.path).copy(target);
+      await _saveMeta(TrackMetadata(
+        title: _meta?.title,
+        artist: _meta?.artist,
+        coverPath: target,
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Не удалось выбрать картинку: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _checkFavoriteStatus() async {
@@ -153,8 +351,8 @@ class _UniversalTrackDetailsScreenState
       final trackId = track.trackId ?? track.uniqueId.hashCode;
       return domain.TrackEntity(
         id: trackId,
-        trackName: track.trackName,
-        artistName: track.artistName,
+        trackName: _trackName,
+        artistName: _artistName,
         trackTime: track.formattedDuration,
         image: track.artworkUrl100,
         previewUrl: track.previewUrl,
@@ -165,9 +363,9 @@ class _UniversalTrackDetailsScreenState
       final trackId = track.filePath.hashCode;
       return domain.TrackEntity(
         id: trackId,
-        trackName: track.trackName,
-        artistName: track.artistName,
-        trackTime: track.formattedDuration,
+        trackName: _trackName,
+        artistName: _artistName,
+        trackTime: _durationString,
         image: null,
         previewUrl: track.filePath,
         favorite: _isFavorite,
@@ -181,8 +379,8 @@ class _UniversalTrackDetailsScreenState
           '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
       return domain.TrackEntity(
         id: track.id,
-        trackName: track.title,
-        artistName: track.artist,
+        trackName: _trackName,
+        artistName: _artistName,
         trackTime: durationString,
         image: null,
         previewUrl: track.streamUrl.isNotEmpty ? track.streamUrl : track.url,
@@ -225,7 +423,8 @@ class _UniversalTrackDetailsScreenState
   }
 
   PlayerTrack get _playerTrack {
-    if (widget.networkTrack != null) return widget.networkTrack!.toPlayerTrack();
+    if (widget.networkTrack != null)
+      return widget.networkTrack!.toPlayerTrack();
     if (widget.downloadedTrack != null) {
       return widget.downloadedTrack!.toPlayerTrack();
     }
@@ -264,6 +463,7 @@ class _UniversalTrackDetailsScreenState
       );
     }
   }
+
   Future<void> _stopTrack() async {
     if (_isCurrent) await PlayerService.instance.stop();
   }
@@ -531,57 +731,86 @@ class _UniversalTrackDetailsScreenState
                       SizedBox(
                         height: 260,
                         width: double.infinity,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: _imageUrl != null
-                              ? Image.network(
-                                  _imageUrl!,
-                                  fit: BoxFit.cover,
-                                  loadingBuilder:
-                                      (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Container(
-                                      color: theme
-                                          .colorScheme.surfaceContainerHighest,
-                                      alignment: Alignment.center,
-                                      child: CircularProgressIndicator(
-                                        value: loadingProgress
-                                                    .expectedTotalBytes !=
-                                                null
-                                            ? loadingProgress
-                                                    .cumulativeBytesLoaded /
-                                                loadingProgress
-                                                    .expectedTotalBytes!
-                                            : null,
-                                      ),
-                                    );
-                                  },
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      decoration: BoxDecoration(
-                                        color: theme.colorScheme
-                                            .surfaceContainerHighest,
-                                      ),
-                                      child: Icon(
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: _meta?.coverPath != null
+                                  ? Image.file(
+                                      File(_meta!.coverPath!),
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) => Icon(
                                         Icons.library_music,
                                         size: 64,
                                         color:
                                             theme.colorScheme.onSurfaceVariant,
                                       ),
-                                    );
-                                  },
-                                )
-                              : Container(
-                                  decoration: BoxDecoration(
-                                    color: theme
-                                        .colorScheme.surfaceContainerHighest,
-                                  ),
-                                  child: Icon(
-                                    Icons.library_music,
-                                    size: 64,
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
+                                    )
+                                  : _imageUrl != null
+                                      ? Image.network(
+                                          _imageUrl!,
+                                          fit: BoxFit.cover,
+                                          loadingBuilder: (context, child,
+                                              loadingProgress) {
+                                            if (loadingProgress == null)
+                                              return child;
+                                            return Container(
+                                              color: theme.colorScheme
+                                                  .surfaceContainerHighest,
+                                              alignment: Alignment.center,
+                                              child: CircularProgressIndicator(
+                                                value: loadingProgress
+                                                            .expectedTotalBytes !=
+                                                        null
+                                                    ? loadingProgress
+                                                            .cumulativeBytesLoaded /
+                                                        loadingProgress
+                                                            .expectedTotalBytes!
+                                                    : null,
+                                              ),
+                                            );
+                                          },
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            return Container(
+                                              decoration: BoxDecoration(
+                                                color: theme.colorScheme
+                                                    .surfaceContainerHighest,
+                                              ),
+                                              child: Icon(
+                                                Icons.library_music,
+                                                size: 64,
+                                                color: theme.colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      : Container(
+                                          decoration: BoxDecoration(
+                                            color: theme.colorScheme
+                                                .surfaceContainerHighest,
+                                          ),
+                                          child: Icon(
+                                            Icons.library_music,
+                                            size: 64,
+                                            color: theme
+                                                .colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                            ),
+                            Positioned(
+                              right: 8,
+                              bottom: 8,
+                              child: IconButton.filledTonal(
+                                icon: const Icon(Icons.edit),
+                                tooltip: 'Изменить обложку',
+                                onPressed: _changeCover,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -603,6 +832,14 @@ class _UniversalTrackDetailsScreenState
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: theme.colorScheme.primary,
                           ),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: _editInfo,
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: const Text('Изменить название и подпись'),
                         ),
                       ),
                       const SizedBox(height: 24),

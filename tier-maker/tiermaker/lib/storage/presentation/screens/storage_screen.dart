@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:mumusic/core/audio/player_adapters.dart';
 import 'package:mumusic/core/audio/player_service.dart';
 import 'package:mumusic/core/global_widgets/panel_header.dart';
@@ -8,6 +11,7 @@ import 'package:mumusic/home/domain/repository/i_downloaded_tracks_repository.da
 import 'package:mumusic/home/domain/repository/downloaded_tracks_repository_impl.dart';
 import 'package:mumusic/home/domain/usecase/get_downloaded_tracks_usecase.dart';
 import 'package:mumusic/home/domain/usecase/delete_downloaded_track_usecase.dart';
+import 'package:mumusic/home/domain/usecase/import_tracks_from_downloads_usecase.dart';
 import 'package:mumusic/storage/presentation/widgets/downloaded_track_item.dart';
 import 'package:mumusic/home/presentation/screens/universal_track_details_screen.dart';
 import 'package:mumusic/core/services/upload_service.dart';
@@ -25,17 +29,20 @@ class _StorageScreenState extends State<StorageScreen> {
       DownloadedTracksRepositoryImpl();
   late final GetDownloadedTracksUseCase _getDownloadedTracksUseCase;
   late final DeleteDownloadedTrackUseCase _deleteDownloadedTrackUseCase;
+  late final ImportTracksFromDownloadsUseCase _importTracksUseCase;
 
   List<DownloadedTrack> _tracks = [];
   bool _isLoading = true;
   String? _errorMessage;
   Set<String> _uploadingTracks = {};
+  bool _isImporting = false;
 
   @override
   void initState() {
     super.initState();
     _getDownloadedTracksUseCase = GetDownloadedTracksUseCase(_repository);
     _deleteDownloadedTrackUseCase = DeleteDownloadedTrackUseCase(_repository);
+    _importTracksUseCase = ImportTracksFromDownloadsUseCase(_repository);
     PlayerService.instance.addListener(_onPlayerChanged);
     _loadTracks();
   }
@@ -253,6 +260,130 @@ class _StorageScreenState extends State<StorageScreen> {
     );
   }
 
+  /// Запрос разрешения на чтение аудиофайлов.
+  /// Android 13+ — READ_MEDIA_AUDIO, ниже — READ_EXTERNAL_STORAGE
+  Future<bool> _requestAudioReadPermission() async {
+    if (!Platform.isAndroid) return true;
+
+    final sdkInt = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
+    final permission = sdkInt >= 33 ? Permission.audio : Permission.storage;
+
+    var status = await permission.status;
+    if (status.isGranted || status.isLimited) return true;
+
+    status = await permission.request();
+    if (status.isGranted || status.isLimited) return true;
+
+    if (!mounted) return false;
+    if (status.isPermanentlyDenied) {
+      final openSettings = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Нужен доступ к музыке'),
+          content: const Text(
+              'Разрешите приложению доступ к аудиофайлам в настройках, '
+              'чтобы добавлять треки из загрузок.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Настройки'),
+            ),
+          ],
+        ),
+      );
+      if (openSettings == true) await openAppSettings();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Без разрешения нельзя прочитать загрузки'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+    return false;
+  }
+
+  Future<void> _importFromDownloads() async {
+    if (_isImporting) return;
+
+    if (!Platform.isAndroid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Импорт из загрузок доступен только на Android'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    if (!await _requestAudioReadPermission()) return;
+
+    setState(() => _isImporting = true);
+    List<DownloadedTrack> candidates;
+    try {
+      candidates = await _importTracksUseCase.findImportable();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isImporting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка чтения загрузок: $e'),
+            backgroundColor: const Color.fromARGB(255, 251, 126, 118),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _isImporting = false);
+
+    if (candidates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('В загрузках нет новых аудиофайлов'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    final selected = await showModalBottomSheet<List<DownloadedTrack>>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => _ImportTracksSheet(tracks: candidates),
+    );
+    if (selected == null || selected.isEmpty || !mounted) return;
+
+    setState(() => _isImporting = true);
+    int imported = 0;
+    try {
+      imported = await _importTracksUseCase.execute(selected);
+    } finally {
+      if (mounted) setState(() => _isImporting = false);
+    }
+    if (!mounted) return;
+
+    await _loadTracks();
+    if (!mounted) return;
+    final failed = selected.length - imported;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(failed == 0
+            ? 'Добавлено треков: $imported'
+            : 'Добавлено: $imported, ошибок: $failed'),
+        backgroundColor: failed == 0 ? Colors.green : Colors.orange,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -283,6 +414,25 @@ class _StorageScreenState extends State<StorageScreen> {
                   tooltip: 'Обновить список',
                 ),
               ],
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: OutlinedButton.icon(
+                onPressed: _isImporting || _isLoading
+                    ? null
+                    : () => _importFromDownloads(),
+                icon: _isImporting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.download_for_offline_outlined),
+                label: const Text('Добавить треки из загрузок'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 40),
+                ),
+              ),
             ),
             if (isAuthorized &&
                 _tracks.isNotEmpty &&
@@ -383,6 +533,112 @@ class _StorageScreenState extends State<StorageScreen> {
                                   );
                                 },
                               ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Нижняя панель выбора аудиофайлов из «Загрузок»
+class _ImportTracksSheet extends StatefulWidget {
+  final List<DownloadedTrack> tracks;
+
+  const _ImportTracksSheet({required this.tracks});
+
+  @override
+  State<_ImportTracksSheet> createState() => _ImportTracksSheetState();
+}
+
+class _ImportTracksSheetState extends State<_ImportTracksSheet> {
+  late final Set<String> _selected =
+      widget.tracks.map((t) => t.filePath).toSet();
+
+  bool get _allSelected => _selected.length == widget.tracks.length;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.75,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Треки в загрузках (${widget.tracks.length})',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() {
+                      if (_allSelected) {
+                        _selected.clear();
+                      } else {
+                        _selected
+                          ..clear()
+                          ..addAll(widget.tracks.map((t) => t.filePath));
+                      }
+                    }),
+                    child: Text(_allSelected ? 'Снять все' : 'Выбрать все'),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: widget.tracks.length,
+                itemBuilder: (context, index) {
+                  final track = widget.tracks[index];
+                  return CheckboxListTile(
+                    value: _selected.contains(track.filePath),
+                    onChanged: (value) => setState(() {
+                      if (value == true) {
+                        _selected.add(track.filePath);
+                      } else {
+                        _selected.remove(track.filePath);
+                      }
+                    }),
+                    title: Text(
+                      track.trackName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      track.artistName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    secondary: const Icon(Icons.audio_file_outlined),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton.icon(
+                onPressed: _selected.isEmpty
+                    ? null
+                    : () => Navigator.of(context).pop(
+                          widget.tracks
+                              .where((t) => _selected.contains(t.filePath))
+                              .toList(),
+                        ),
+                icon: const Icon(Icons.add),
+                label: Text('Добавить (${_selected.length})'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 44),
+                ),
               ),
             ),
           ],
