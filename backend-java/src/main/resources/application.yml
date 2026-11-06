@@ -1,0 +1,72 @@
+# Все настройки берутся из тех же переменных окружения, что и у старого сервера на Node.
+# Для локального запуска их можно положить в .env рядом с pom.xml (формат KEY=value).
+spring:
+  application:
+    name: mumusic-api
+  config:
+    import: optional:file:.env[.properties]
+  main:
+    banner-mode: off
+  lifecycle:
+    # Сколько ждать завершения текущих запросов после SIGTERM
+    timeout-per-shutdown-phase: 8s
+  servlet:
+    multipart:
+      # Как у multer: файл до 100 МБ
+      max-file-size: 100MB
+      max-request-size: 110MB
+  mvc:
+    # Неизвестный маршрут → NoHandlerFoundException → JSON 404, как notFoundHandler
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
+  jackson:
+    default-property-inclusion: always
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # База могла быть создана старым раннером (таблица schema_migrations).
+    # Все миграции идемпотентны (IF NOT EXISTS), поэтому baseline на версии 0:
+    # Flyway пройдёт их все и ничего не сломает
+    baseline-on-migrate: true
+    baseline-version: 0
+
+server:
+  port: ${PORT:5050}
+  shutdown: graceful
+  # За nginx: X-Forwarded-Proto учитывается вручную (см. BaseUrl), Host берётся как есть
+  forward-headers-strategy: none
+  tomcat:
+    relaxed-query-chars: "[,],|,{,}"
+
+app:
+  # development | test | production (старое имя NODE_ENV тоже понимается)
+  env: ${APP_ENV:${NODE_ENV:development}}
+  database:
+    url: ${DATABASE_URL:}
+    # require | disable; по умолчанию require только в production
+    ssl: ${DATABASE_SSL:}
+    pool-max: ${DATABASE_POOL_MAX:10}
+  jwt:
+    access-secret: ${JWT_ACCESS_SECRET:}
+    refresh-secret: ${JWT_REFRESH_SECRET:}
+    access-ttl: ${ACCESS_TOKEN_TTL:60m}
+    refresh-ttl: ${REFRESH_TOKEN_TTL:7d}
+    media-ttl: ${MEDIA_TOKEN_TTL:7d}
+  # Папка с аудио. По умолчанию ../server/storage (как у старого сервера)
+  storage-root: ${STORAGE_ROOT:}
+  # Дополнительные CORS-источники через запятую
+  cors-origins: ${CORS_ORIGINS:}
+
+springdoc:
+  api-docs:
+    path: /api-docs/openapi.json
+  swagger-ui:
+    path: /api-docs
+
+logging:
+  # trace | debug | info | warn | error | off
+  level:
+    root: ${LOG_LEVEL:info}
+    org.springframework.security.web.firewall: warn
