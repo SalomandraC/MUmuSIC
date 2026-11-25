@@ -11,10 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Ошибки валидации в форме, похожей на issues из zod: [{code, path: [...], message}].
- * Приложение читает только поле error, issues нужны для отладки.
- */
 public final class ValidationIssues {
 
     private ValidationIssues() {}
@@ -44,7 +40,6 @@ public final class ValidationIssues {
         return result;
     }
 
-    /** Добавляет к пути каждой ошибки префикс (индекс в массиве и т.п.) */
     public static List<Map<String, Object>> prefixed(List<Object> prefix, List<Map<String, Object>> issues) {
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> issue : issues) {

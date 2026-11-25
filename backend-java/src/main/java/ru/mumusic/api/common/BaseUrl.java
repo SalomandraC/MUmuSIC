@@ -2,7 +2,7 @@ package ru.mumusic.api.common;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-/** protocol://host запроса, как `${req.protocol}://${req.get('host')}` в Express с trust proxy */
+/** protocol://host запроса, как `${req.protocol}://${req.get('host')}` в Express*/
 public final class BaseUrl {
 
     private BaseUrl() {}

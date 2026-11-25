@@ -5,10 +5,6 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Разбор сроков жизни токенов в формате библиотеки ms, которой пользовался jsonwebtoken:
- * "60m", "7d", "1h", "30s", "2 days". Число без единицы — миллисекунды (как в ms).
- */
 public final class TimeSpan {
 
     private static final Pattern FORMAT = Pattern.compile(
