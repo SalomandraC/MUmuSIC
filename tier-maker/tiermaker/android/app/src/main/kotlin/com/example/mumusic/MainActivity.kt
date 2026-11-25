@@ -16,6 +16,8 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : FlutterActivity() {
+    private var speechResult: MethodChannel.Result? = null
+    private val speechRequest = 4712
     private val CHANNEL = "com.example.mumusic/nfc"
     private var nfcTag: Tag? = null
 
@@ -28,6 +30,25 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "mumusic/speech").setMethodCallHandler { call, result ->
+            if (call.method != "listen") {
+                result.notImplemented()
+            } else if (speechResult != null) {
+                result.error("busy", "Распознавание уже запущено", null)
+            } else {
+                val intent = Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                    .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+                    .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Play me track …")
+                speechResult = result
+                try {
+                    startActivityForResult(intent, speechRequest)
+                } catch (e: android.content.ActivityNotFoundException) {
+                    speechResult = null
+                    result.error("unavailable", "Установите службу распознавания речи Android", null)
+                }
+            }
+        }
         
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
@@ -129,6 +150,12 @@ class MainActivity : FlutterActivity() {
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == speechRequest) {
+            val phrase = data?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            speechResult?.success(if (resultCode == Activity.RESULT_OK) phrase else null)
+            speechResult = null
+            return
+        }
         if (requestCode != DELETE_REQUEST_CODE) return
         val result = pendingDeleteResult ?: return
         val path = pendingDeletePath
