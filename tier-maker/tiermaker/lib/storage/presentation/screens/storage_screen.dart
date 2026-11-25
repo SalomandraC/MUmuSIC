@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/services.dart';
+import 'package:mumusic/core/audio/pocket_command.dart';
+import 'package:mumusic/core/audio/title_match.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -25,6 +28,34 @@ class StorageScreen extends StatefulWidget {
 }
 
 class _StorageScreenState extends State<StorageScreen> {
+  bool _listening = false;
+
+  Future<void> _voicePlay() async {
+    setState(() => _listening = true);
+    try {
+      final phrase = await const MethodChannel('mumusic/speech')
+          .invokeMethod<String>('listen');
+      if (!mounted || phrase == null || phrase.trim().isEmpty) return;
+      final title = await PocketCommand.extractTitle(phrase);
+      if (!mounted) return;
+      final index = matchTrackTitle(title, _tracks.map((t) => t.trackName).toList());
+      if (index < 0) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('«$phrase» — уточните название трека из хранилища.'),
+        ));
+        return;
+      }
+      await PlayerService.instance.playSingle(_tracks[index].toPlayerTrack());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Голосовой запуск: $e'),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _listening = false);
+    }
+  }
   final IDownloadedTracksRepository _repository =
       DownloadedTracksRepositoryImpl();
   late final GetDownloadedTracksUseCase _getDownloadedTracksUseCase;
@@ -402,6 +433,12 @@ class _StorageScreenState extends State<StorageScreen> {
                     showBackButton: true,
                   ),
                 ),
+                if (Platform.isAndroid)
+                  IconButton(
+                    tooltip: 'Назвать трек по-английски',
+                    icon: Icon(_listening ? Icons.hourglass_top : Icons.mic),
+                    onPressed: _listening || _tracks.isEmpty || _isLoading ? null : _voicePlay,
+                  ),
                 IconButton(
                   icon: _isLoading
                       ? const SizedBox(
